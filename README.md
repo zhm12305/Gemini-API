@@ -1,4 +1,4 @@
-# Gemini Blog Gateway (1Panel + Docker)
+# Gemini API Balance (1Panel + Docker)
 
 当前部署在 Linux 服务器（1Panel + Docker）上的网关项目仓库化版本。  
 项目本质是一个 `FastAPI` 网关，提供：
