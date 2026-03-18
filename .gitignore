@@ -1,0 +1,48 @@
+# -----------------------------
+# Secrets
+# -----------------------------
+.env
+.env.*
+!.env.example
+
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# -----------------------------
+# Node / Frontend
+# -----------------------------
+page/node_modules/
+page/dist/
+page/.vite/
+page/.DS_Store
+
+# -----------------------------
+# Generated build output
+# -----------------------------
+app/templates/assets/
+
+# -----------------------------
+# Runtime data / logs
+# -----------------------------
+settings/*.json
+settings/credentials/
+nginx/logs/
+*.log
+
+# -----------------------------
+# Editor / OS
+# -----------------------------
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Hajimi 应用服务
+  hajimi-app:
+    image: beijixingxing/hajimi:latest
+    container_name: hajimi-app
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    ports:
+      - "7860:7860"
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Shanghai
+      - ENABLE_STORAGE=true
+    volumes:
+      - ./settings:/hajimi/settings
+      # 挂载前端模板文件（如果需要自定义前端）
+      - ./app/templates:/app/app/templates
+      # 挂载修复后的配置和服务文件
+      - ./app/config/settings.py:/app/app/config/settings.py
+      - ./app/utils/api_key.py:/app/app/utils/api_key.py
+      - ./app/services/gemini.py:/app/app/services/gemini.py
+      - ./app/services/OpenAI.py:/app/app/services/OpenAI.py
+    restart: unless-stopped
+    networks:
+      - hajimi-network
+
+  # Nginx 反向代理服务
+  nginx:
+    image: nginx:alpine
+    container_name: hajimi-nginx
+    ports:
+      - "20220:80"    # HTTP端口
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/logs:/var/log/nginx
+      # SSL证书目录（如果需要）
+      # - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - hajimi-app
+    restart: unless-stopped
+    networks:
+      - hajimi-network
+
+  # 自动更新监控服务
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: hajimi-watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TZ=Asia/Shanghai
+      - WATCHTOWER_LABEL_ENABLE=true
+      - WATCHTOWER_POLL_INTERVAL=3600
+      - WATCHTOWER_CLEANUP=true
+    restart: unless-stopped
+    networks:
+      - hajimi-network
+
+# 网络配置
+networks:
+  hajimi-network:
+    driver: bridge
