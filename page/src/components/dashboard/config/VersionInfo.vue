@@ -35,7 +35,7 @@ const dashboardStore = useDashboardStore()
     <div class="project-link-container">
       <a href="https://github.com/wyeeeee/hajimi" target="_blank" rel="noopener noreferrer" class="project-link">
         <span class="github-icon">🌸</span>
-        <span class="project-text">项目地址：github.com/wyeeeee/hajimi</span>
+        <span class="project-text">项目地址：github.com/zhm12305/Gemini-API</span>
         <span class="github-icon">🌸</span>
       </a>
     </div>
