@@ -15,7 +15,7 @@ WEB_PASSWORD = os.environ.get("WEB_PASSWORD", PASSWORD).strip('"')
 GEMINI_API_KEYS = os.environ.get("GEMINI_API_KEYS", "")
 
 # Gemini API基础地址
-GEMINI_API_BASE_URL = os.environ.get("GEMINI_API_BASE_URL", "https://gemini.my996.top")
+GEMINI_API_BASE_URL = os.environ.get("GEMINI_API_BASE_URL", "https://generativelanguage.googleapis.com")
 
 # 假流式是否开启
 FAKE_STREAMING = os.environ.get("FAKE_STREAMING", "true").lower() in [
