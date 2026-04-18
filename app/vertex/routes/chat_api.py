@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from typing import List, Dict, Any
 
-from app.utils.logging import vertex_log
+from app.utils.logging import vertex_log, vertex_log_model_json
+from app.utils.model_limits import apply_gemini_3_flash_openai_params
 from app.config import settings
 
 # Google and OpenAI specific imports
@@ -243,6 +244,7 @@ async def chat_completions(fastapi_request: Request, request: OpenAIRequest, api
                 "n": request.n,
             }
             openai_params = {k: v for k, v in openai_params.items() if v is not None}
+            apply_gemini_3_flash_openai_params(base_model_name, openai_params)
 
             openai_extra_body = {
                 'google': {
@@ -286,6 +288,20 @@ async def chat_completions(fastapi_request: Request, request: OpenAIRequest, api
                         try:
                             # Ensure stream=True is explicitly passed for real streaming
                             openai_params_for_true_stream = {**openai_params, "stream": True}
+                            vertex_log_model_json(
+                                "info",
+                                "模型请求 JSON 详细内容",
+                                {
+                                    "action": "openai.chat.completions.stream",
+                                    "payload": openai_params_for_true_stream,
+                                    "extra_body": openai_extra_body,
+                                },
+                                extra={
+                                    "vertex_id": "openai-direct",
+                                    "operation": "stream-request",
+                                    "status": request.model,
+                                },
+                            )
                             stream_response = await openai_client.chat.completions.create(
                                 **openai_params_for_true_stream,
                                 extra_body=openai_extra_body
@@ -309,6 +325,16 @@ async def chat_completions(fastapi_request: Request, request: OpenAIRequest, api
                                                     if 'extra_content' in delta: del delta['extra_content']
                                     
                                     # vertex_log('debug', f"DEBUG OpenAI Stream Chunk: {chunk_as_dict}") # Potential verbose log
+                                    vertex_log_model_json(
+                                        "info",
+                                        "模型流式回答片段 JSON 详细内容",
+                                        chunk_as_dict,
+                                        extra={
+                                            "vertex_id": "openai-direct",
+                                            "operation": "stream-response",
+                                            "status": request.model,
+                                        },
+                                    )
                                     yield f"data: {json.dumps(chunk_as_dict)}\n\n"
 
                                 except Exception as chunk_processing_error:
@@ -335,12 +361,36 @@ async def chat_completions(fastapi_request: Request, request: OpenAIRequest, api
                 try:
                     # Ensure stream=False is explicitly passed for non-streaming
                     openai_params_for_non_stream = {**openai_params, "stream": False}
+                    vertex_log_model_json(
+                        "info",
+                        "模型请求 JSON 详细内容",
+                        {
+                            "action": "openai.chat.completions",
+                            "payload": openai_params_for_non_stream,
+                            "extra_body": openai_extra_body,
+                        },
+                        extra={
+                            "vertex_id": "openai-direct",
+                            "operation": "non-stream-request",
+                            "status": request.model,
+                        },
+                    )
                     response = await openai_client.chat.completions.create(
                         **openai_params_for_non_stream,
                         # Removed redundant **openai_params spread
                         extra_body=openai_extra_body
                     )
                     response_dict = response.model_dump(exclude_unset=True, exclude_none=True)
+                    vertex_log_model_json(
+                        "info",
+                        "模型回答 JSON 详细内容",
+                        response_dict,
+                        extra={
+                            "vertex_id": "openai-direct",
+                            "operation": "non-stream-response",
+                            "status": request.model,
+                        },
+                    )
                     
                     try:
                         # Extract reasoning directly from the response
@@ -593,11 +643,35 @@ async def openai_fake_stream_generator(
     async def _openai_api_call_wrapper():
         params_for_non_stream_call = openai_params.copy()
         params_for_non_stream_call['stream'] = False
+        vertex_log_model_json(
+            "info",
+            "模型请求 JSON 详细内容",
+            {
+                "action": "openai.chat.completions.fake_stream_source",
+                "payload": params_for_non_stream_call,
+                "extra_body": openai_extra_body,
+            },
+            extra={
+                "vertex_id": "openai-direct",
+                "operation": "fake-stream-request",
+                "status": request_obj.model,
+            },
+        )
         
         _api_call_task = asyncio.create_task(
             openai_client.chat.completions.create(**params_for_non_stream_call, extra_body=openai_extra_body)
         )
         raw_response = await _api_call_task
+        vertex_log_model_json(
+            "info",
+            "模型回答 JSON 详细内容",
+            raw_response,
+            extra={
+                "vertex_id": "openai-direct",
+                "operation": "fake-stream-response",
+                "status": request_obj.model,
+            },
+        )
         
         # Extract reasoning and content directly from the response
         full_content_from_api = ""

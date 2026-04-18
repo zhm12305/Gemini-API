@@ -1,7 +1,10 @@
 import logging
+import json
 from datetime import datetime
 from collections import deque
 from threading import Lock
+from dataclasses import asdict, is_dataclass
+from enum import Enum
 
 DEBUG = False  # 可以从环境变量中获取
 
@@ -146,3 +149,96 @@ def vertex_log(level: str, message: str, extra: dict = None, **kwargs):
     msg = vertex_format_log_message(level.upper(), message, extra=final_extra)
     
     getattr(logger, level.lower())(msg)
+
+def _json_safe_value(value, seen=None):
+    if seen is None:
+        seen = set()
+
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+
+    value_id = id(value)
+    if value_id in seen:
+        return "<circular>"
+
+    if isinstance(value, bytes):
+        try:
+            return value.decode("utf-8")
+        except UnicodeDecodeError:
+            return repr(value)
+
+    if isinstance(value, Enum):
+        return value.value
+
+    if isinstance(value, dict):
+        seen.add(value_id)
+        try:
+            return {str(k): _json_safe_value(v, seen) for k, v in value.items()}
+        finally:
+            seen.discard(value_id)
+
+    if isinstance(value, (list, tuple, set, frozenset)):
+        seen.add(value_id)
+        try:
+            return [_json_safe_value(item, seen) for item in value]
+        finally:
+            seen.discard(value_id)
+
+    if is_dataclass(value):
+        seen.add(value_id)
+        try:
+            return _json_safe_value(asdict(value), seen)
+        finally:
+            seen.discard(value_id)
+
+    if hasattr(value, "model_dump"):
+        try:
+            return _json_safe_value(value.model_dump(mode="json"), seen)
+        except TypeError:
+            try:
+                return _json_safe_value(value.model_dump(), seen)
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    if hasattr(value, "dict"):
+        try:
+            return _json_safe_value(value.dict(), seen)
+        except Exception:
+            pass
+
+    if hasattr(value, "to_dict"):
+        try:
+            return _json_safe_value(value.to_dict(), seen)
+        except Exception:
+            pass
+
+    if hasattr(value, "__dict__"):
+        seen.add(value_id)
+        try:
+            return {
+                str(k): _json_safe_value(v, seen)
+                for k, v in vars(value).items()
+                if not callable(v)
+            }
+        except Exception:
+            pass
+        finally:
+            seen.discard(value_id)
+
+    return str(value)
+
+def format_json_detail(title: str, payload) -> str:
+    safe_payload = _json_safe_value(payload)
+    try:
+        json_payload = json.dumps(safe_payload, ensure_ascii=False, indent=2)
+    except Exception:
+        json_payload = str(safe_payload)
+    return f"{title}:\n{json_payload}"
+
+def log_model_json(level: str, title: str, payload, extra: dict = None, **kwargs):
+    log(level, format_json_detail(title, payload), extra=extra, **kwargs)
+
+def vertex_log_model_json(level: str, title: str, payload, extra: dict = None, **kwargs):
+    vertex_log(level, format_json_detail(title, payload), extra=extra, **kwargs)

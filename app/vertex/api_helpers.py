@@ -14,6 +14,8 @@ from app.vertex.models import OpenAIRequest, OpenAIMessage # Changed from relati
 from app.vertex.message_processing import deobfuscate_text, convert_to_openai_format, convert_chunk_to_openai, create_final_chunk # Changed from relative
 import app.vertex.config as app_config # Changed from relative
 from app.config import settings # 导入settings模块
+from app.utils.logging import vertex_log_model_json
+from app.utils.model_limits import apply_gemini_3_flash_sdk_generation_config
 
 def create_openai_error_response(status_code: int, message: str, error_type: str) -> Dict[str, Any]:
     return {
@@ -43,6 +45,7 @@ def create_generation_config(request: OpenAIRequest) -> Dict[str, Any]:
             types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="OFF"),
             types.SafetySetting(category="HARM_CATEGORY_CIVIC_INTEGRITY", threshold="OFF")
     ]
+    apply_gemini_3_flash_sdk_generation_config(request.model, config)
     return config
 
 def is_response_valid(response):
@@ -187,6 +190,16 @@ async def gemini_fake_stream_generator(
     
     try:
         raw_response = await api_call_task # Get the full Gemini response
+        vertex_log_model_json(
+            "info",
+            "模型回答 JSON 详细内容",
+            raw_response,
+            extra={
+                "vertex_id": "gemini",
+                "operation": "fake-stream-response",
+                "status": request_obj.model,
+            },
+        )
 
         # 2. Parse the response for reasoning and content using the centralized parser
         separated_reasoning_text = ""
@@ -261,6 +274,26 @@ async def execute_gemini_call(
         fake_streaming_enabled = app_config.FAKE_STREAMING_ENABLED
     
     print(f"DEBUG: FAKE_STREAMING setting is {fake_streaming_enabled} for model {request_obj.model}")
+    if request_obj.stream:
+        action_for_log = "generate_content" if fake_streaming_enabled else "generate_content_stream"
+    else:
+        action_for_log = "generate_content"
+    vertex_log_model_json(
+        "info",
+        "模型请求 JSON 详细内容",
+        {
+            "model": model_to_call,
+            "action": action_for_log,
+            "stream": request_obj.stream,
+            "contents": actual_prompt_for_call,
+            "config": gen_config_for_call,
+        },
+        extra={
+            "vertex_id": "gemini",
+            "operation": action_for_log,
+            "status": request_obj.model,
+        },
+    )
 
     if request_obj.stream:
         if fake_streaming_enabled:
@@ -286,6 +319,16 @@ async def execute_gemini_call(
                     contents=actual_prompt_for_call, 
                     config=gen_config_for_call
                 ):
+                    vertex_log_model_json(
+                        "info",
+                        "模型流式回答片段 JSON 详细内容",
+                        chunk_item_call,
+                        extra={
+                            "vertex_id": "gemini",
+                            "operation": "stream-response",
+                            "status": request_obj.model,
+                        },
+                    )
                     yield convert_chunk_to_openai(chunk_item_call, request_obj.model, response_id_for_stream, 0)
                 yield create_final_chunk(request_obj.model, response_id_for_stream, cand_count_stream)
                 yield "data: [DONE]\n\n"
@@ -305,6 +348,16 @@ async def execute_gemini_call(
             model=model_to_call, 
             contents=actual_prompt_for_call, 
             config=gen_config_for_call
+        )
+        vertex_log_model_json(
+            "info",
+            "模型回答 JSON 详细内容",
+            response_obj_call,
+            extra={
+                "vertex_id": "gemini",
+                "operation": "non-stream-response",
+                "status": request_obj.model,
+            },
         )
         if hasattr(response_obj_call, 'prompt_feedback') and hasattr(response_obj_call.prompt_feedback, 'block_reason') and response_obj_call.prompt_feedback.block_reason:
             block_msg = f"Blocked (Gemini): {response_obj_call.prompt_feedback.block_reason}"

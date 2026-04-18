@@ -8,7 +8,8 @@ import secrets
 import string
 import app.config.settings as settings
 
-from app.utils.logging import log
+from app.utils.logging import log, log_model_json
+from app.utils.model_limits import apply_gemini_3_flash_openai_params
 
 
 def generate_secure_random_string(length):
@@ -32,6 +33,7 @@ class OpenAIClient:
     def __init__(self, api_key: str):
         self.api_key = api_key
 
+    @staticmethod
     def filter_data_by_whitelist(data, allowed_keys):
         """
         根据白名单过滤字典。
@@ -42,11 +44,18 @@ class OpenAIClient:
         Returns:
             dict: 只包含白名单中键的新字典。
         """
+        if hasattr(data, "model_dump"):
+            source_data = data.model_dump(exclude_none=True)
+        elif hasattr(data, "dict"):
+            source_data = data.dict(exclude_none=True)
+        else:
+            source_data = data
+
         # 使用集合(set)可以提高查找效率，特别是当白名单很大时
         allowed_keys_set = set(allowed_keys)
         # 使用字典推导式创建过滤后的新字典
         filtered_data = {
-            key: value for key, value in data.items() if key in allowed_keys_set
+            key: value for key, value in source_data.items() if key in allowed_keys_set
         }
         return filtered_data
 
@@ -65,8 +74,9 @@ class OpenAIClient:
         ]
 
         data = self.filter_data_by_whitelist(request, whitelist)
+        data_model = data.get("model") if isinstance(data, dict) else data.model
 
-        if settings.search["search_mode"] and data.model.endswith("-search"):
+        if settings.search["search_mode"] and data_model.endswith("-search"):
             log(
                 "INFO",
                 "开启联网搜索模式",
@@ -74,7 +84,12 @@ class OpenAIClient:
             )
             data.setdefault("tools", []).append({"google_search": {}})
 
-        data.model = data.model.removesuffix("-search")
+        data_model = data_model.removesuffix("-search")
+        if isinstance(data, dict):
+            data["model"] = data_model
+        else:
+            data.model = data_model
+        apply_gemini_3_flash_openai_params(data_model, data)
 
         # 真流式请求处理逻辑
         extra_log = {
@@ -83,6 +98,17 @@ class OpenAIClient:
             "model": request.model,
         }
         log("INFO", "流式请求开始", extra=extra_log)
+        log_model_json(
+            "INFO",
+            "模型请求 JSON 详细内容",
+            {
+                "api_version": "v1beta",
+                "model": data_model,
+                "action": "openai.chat.completions.stream",
+                "payload": data,
+            },
+            extra=extra_log,
+        )
 
         url = f"{settings.GEMINI_API_BASE_URL}/v1beta/openai/chat/completions"
         headers = {
@@ -109,11 +135,16 @@ class OpenAIClient:
                         buffer += line.encode("utf-8")
                         try:
                             # 尝试解析整个缓冲区
-                            data = json.loads(buffer.decode("utf-8"))
+                            parsed_chunk = json.loads(buffer.decode("utf-8"))
                             # 解析成功，清空缓冲区
                             buffer = b""
-
-                            yield data
+                            log_model_json(
+                                "INFO",
+                                "模型流式回答片段 JSON 详细内容",
+                                parsed_chunk,
+                                extra=extra_log,
+                            )
+                            yield parsed_chunk
 
                         except json.JSONDecodeError:
                             # JSON 不完整，继续累积到 buffer

@@ -44,5 +44,6 @@ nginx/logs/
 # -----------------------------
 .vscode/
 .idea/
+.omc/
 Thumbs.db
 .DS_Store

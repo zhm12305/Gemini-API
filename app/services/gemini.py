@@ -8,7 +8,8 @@ import secrets
 import string
 import app.config.settings as settings
 
-from app.utils.logging import log
+from app.utils.logging import log, log_model_json
+from app.utils.model_limits import apply_gemini_3_flash_rest_generation_config
 
 
 def generate_secure_random_string(length):
@@ -164,6 +165,11 @@ class GeminiClient:
             if request.payload:
                 # 将 Pydantic 模型转换为字典, 假设 Pydantic V2+
                 data = request.payload.model_dump(exclude_none=True)
+                generation_config = data.setdefault("generationConfig", {})
+                apply_gemini_3_flash_rest_generation_config(
+                    request.model,
+                    generation_config,
+                )
             # # 注入搜索提示
             # if settings.search["search_mode"] and request.model and request.model.endswith("-search"):
             #     data.insert(len(data)-2,{'role': 'user', 'parts': [{'text':settings.search["search_prompt"]}]})
@@ -199,9 +205,15 @@ class GeminiClient:
         safety_settings,
         system_instruction,
     ):
+        max_output_tokens = request.max_tokens
+        if request.model and request.model.endswith("-search"):
+            model_for_config = request.model.removesuffix("-search")
+        else:
+            model_for_config = request.model
+
         config_params = {
             "temperature": request.temperature,
-            "maxOutputTokens": request.max_tokens,
+            "maxOutputTokens": max_output_tokens,
             "topP": request.top_p,
             "topK": request.top_k,
             "stopSequences": request.stop
@@ -211,11 +223,15 @@ class GeminiClient:
             else None,
             "candidateCount": request.n,
         }
-        if request.thinking_budget:
+        if request.thinking_budget and not model_for_config == "gemini-3-flash-preview":
             config_params["thinkingConfig"] = {
                 "thinkingBudget": request.thinking_budget
             }
         generationConfig = {k: v for k, v in config_params.items() if v is not None}
+        apply_gemini_3_flash_rest_generation_config(
+            model_for_config,
+            generationConfig,
+        )
 
         api_version = "v1alpha" if "think" in request.model else "v1beta"
 
@@ -304,6 +320,17 @@ class GeminiClient:
         api_version, model, data = self._convert_request_data(
             request, contents, safety_settings, system_instruction
         )
+        log_model_json(
+            "INFO",
+            "模型请求 JSON 详细内容",
+            {
+                "api_version": api_version,
+                "model": model,
+                "action": "streamGenerateContent",
+                "payload": data,
+            },
+            extra=extra_log,
+        )
 
         url = f"{settings.GEMINI_API_BASE_URL}/{api_version}/models/{model}:streamGenerateContent?key={self.api_key}&alt=sse"
         headers = {
@@ -334,10 +361,16 @@ class GeminiClient:
                         buffer += line.encode("utf-8")
                         try:
                             # 尝试解析整个缓冲区
-                            data = json.loads(buffer.decode("utf-8"))
+                            parsed_chunk = json.loads(buffer.decode("utf-8"))
                             # 解析成功，清空缓冲区
                             buffer = b""
-                            yield GeminiResponseWrapper(data)
+                            log_model_json(
+                                "INFO",
+                                "模型流式回答片段 JSON 详细内容",
+                                parsed_chunk,
+                                extra=extra_log,
+                            )
+                            yield GeminiResponseWrapper(parsed_chunk)
 
                         except json.JSONDecodeError:
                             # JSON 不完整，继续累积到 buffer
@@ -358,6 +391,22 @@ class GeminiClient:
         api_version, model, data = self._convert_request_data(
             request, contents, safety_settings, system_instruction
         )
+        extra_log = {
+            "key": self.api_key[:8],
+            "request_type": "non-stream",
+            "model": request.model,
+        }
+        log_model_json(
+            "INFO",
+            "模型请求 JSON 详细内容",
+            {
+                "api_version": api_version,
+                "model": model,
+                "action": "generateContent",
+                "payload": data,
+            },
+            extra=extra_log,
+        )
 
         url = f"{settings.GEMINI_API_BASE_URL}/{api_version}/models/{model}:generateContent?key={self.api_key}"
         headers = {
@@ -370,8 +419,15 @@ class GeminiClient:
                     url, headers=headers, json=data, timeout=600
                 )
                 response.raise_for_status()  # 检查 HTTP 错误状态
+                response_json = response.json()
+                log_model_json(
+                    "INFO",
+                    "模型回答 JSON 详细内容",
+                    response_json,
+                    extra=extra_log,
+                )
 
-            return GeminiResponseWrapper(response.json())
+            return GeminiResponseWrapper(response_json)
         except Exception:
             raise
 
