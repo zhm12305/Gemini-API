@@ -1,9 +1,11 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import DashboardView from '../views/DashboardView.vue'
 import BackendView from '../views/BackendView.vue'
+import AccountView from '../views/AccountView.vue'
+import AdminView from '../views/AdminView.vue'
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHashHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
@@ -14,6 +16,16 @@ const router = createRouter({
       path: '/backends',
       name: 'backends',
       component: BackendView,
+    },
+    {
+      path: '/account',
+      name: 'account',
+      component: AccountView,
+    },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: AdminView,
     },
     // 重定向所有其他路径到仪表盘
     {

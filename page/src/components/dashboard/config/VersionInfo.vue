@@ -19,11 +19,9 @@ const dashboardStore = useDashboardStore()
       <div class="stat-card">
         <div class="update-status-container">
           <div class="update-status" v-if="dashboardStore.config.hasUpdate">
-            <span class="status-icon update-needed">⚠️</span>
             <span class="status-text update-needed">需要更新</span>
           </div>
           <div class="update-status" v-else>
-            <span class="status-icon up-to-date">✓</span>
             <span class="status-text up-to-date">已是最新</span>
           </div>
         </div>
@@ -34,9 +32,7 @@ const dashboardStore = useDashboardStore()
     <!-- 项目地址 -->
     <div class="project-link-container">
       <a href="https://github.com/zhm12305/Gemini-API" target="_blank" rel="noopener noreferrer" class="project-link">
-        <span class="github-icon">🌸</span>
         <span class="project-text">项目地址：github.com/zhm12305/Gemini-API</span>
-        <span class="github-icon">🌸</span>
       </a>
     </div>
   </div>
@@ -164,14 +160,6 @@ const dashboardStore = useDashboardStore()
   text-overflow: ellipsis;
 }
 
-.update-status .status-icon {
-  font-size: 1.2em;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
 .update-status .status-text {
   font-size: 1em;
   font-weight: 600;
@@ -180,12 +168,10 @@ const dashboardStore = useDashboardStore()
   text-overflow: ellipsis;
 }
 
-.update-status .status-icon.update-needed,
 .update-status .status-text.update-needed {
   color: #ef4444;
 }
 
-.update-status .status-icon.up-to-date,
 .update-status .status-text.up-to-date {
   color: #10b981;
 }
@@ -208,7 +194,7 @@ const dashboardStore = useDashboardStore()
   text-decoration: none;
   font-size: 14px;
   padding: 10px 18px;
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-md);
   background-color: var(--stats-item-bg);
   transition: all 0.3s ease;
   box-shadow: var(--shadow-sm);
@@ -238,17 +224,6 @@ const dashboardStore = useDashboardStore()
 
 .project-link:hover::before {
   transform: translateX(100%);
-}
-
-.github-icon {
-  font-size: 18px;
-  opacity: 0.8;
-  transition: all 0.3s ease;
-}
-
-.project-link:hover .github-icon {
-  opacity: 1;
-  transform: scale(1.2) rotate(10deg);
 }
 
 .project-text {
@@ -290,10 +265,6 @@ const dashboardStore = useDashboardStore()
     padding: 6px 10px;
   }
   
-  .update-status .status-icon {
-    font-size: 1.1em;
-  }
-  
   .update-status .status-text {
     font-size: 0.9em;
   }
@@ -303,9 +274,6 @@ const dashboardStore = useDashboardStore()
     padding: 8px 14px;
   }
   
-  .github-icon {
-    font-size: 16px;
-  }
 }
 
 /* 小屏幕手机进一步优化 */
@@ -327,10 +295,6 @@ const dashboardStore = useDashboardStore()
     padding: 4px 8px;
   }
   
-  .update-status .status-icon {
-    font-size: 1em;
-  }
-  
   .update-status .status-text {
     font-size: 0.85em;
   }
@@ -340,8 +304,5 @@ const dashboardStore = useDashboardStore()
     padding: 6px 12px;
   }
   
-  .github-icon {
-    font-size: 14px;
-  }
 }
 </style>

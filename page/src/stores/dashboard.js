@@ -34,10 +34,24 @@ export const useDashboardStore = defineStore('dashboard', () => {
     maxConcurrentRequests: 0,
     maxRetryNum: 0,
     searchPrompt: '',
-    maxEmptyResponses: 0
+    maxEmptyResponses: 0,
+    toolsEnabled: false,
+    autoToolCalling: true,
+    toolMaxRounds: 2,
+    codeExecutionEnabled: false,
+    webFetchTimeout: 10,
+    maxSearchResults: 5,
+    geminiApiBaseUrls: []
   })
 
   const apiKeyStats = ref([])
+  const apiKeyHealth = ref([])
+  const userAuth = ref({
+    users: 0,
+    active_api_keys: 0,
+    total_requests: 0,
+    total_tokens: 0
+  })
   const logs = ref([])
   const isRefreshing = ref(false)
   const isConfigLoaded = ref(false)
@@ -47,7 +61,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const availableModels = ref([])
   
   // 夜间模式状态
-  const isDarkMode = ref(localStorage.getItem('darkMode') === 'true')
+  const storedDarkMode = localStorage.getItem('darkMode')
+  const isDarkMode = ref(storedDarkMode === null ? true : storedDarkMode === 'true')
   
   // 监听夜间模式变化，保存到localStorage
   watch(isDarkMode, (newValue) => {
@@ -131,7 +146,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
       vertexExpressApiKey: data.vertex_express_api_key || false,
       googleCredentialsJson: data.google_credentials_json || false,
       maxRetryNum: data.max_retry_num || 0,
-      maxEmptyResponses: data.max_empty_responses || 0
+      maxEmptyResponses: data.max_empty_responses || 0,
+      toolsEnabled: data.tools_enabled || false,
+      autoToolCalling: data.auto_tool_calling ?? true,
+      toolMaxRounds: data.tool_max_rounds || 0,
+      codeExecutionEnabled: data.code_execution_enabled || false,
+      webFetchTimeout: data.web_fetch_timeout || 0,
+      maxSearchResults: data.max_search_results || 0,
+      geminiApiBaseUrls: data.gemini_api_base_urls || []
     }
 
     // 更新API密钥统计
@@ -163,6 +185,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
       if (!availableModels.value.includes(selectedModel.value)) {
         selectedModel.value = 'all'
       }
+    }
+
+    if (data.api_key_health) {
+      apiKeyHealth.value = data.api_key_health
+    }
+
+    if (data.user_auth) {
+      userAuth.value = data.user_auth
     }
 
     // 更新日志
@@ -224,6 +254,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     status,
     config,
     apiKeyStats,
+    apiKeyHealth,
+    userAuth,
     logs,
     isRefreshing,
     timeSeriesData,  // 导出时间序列数据

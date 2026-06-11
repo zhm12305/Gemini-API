@@ -18,6 +18,9 @@ if (fs.existsSync(assetsDir)) {
   // 删除assets目录中的所有文件
   const files = fs.readdirSync(assetsDir);
   for (const file of files) {
+    if (file === 'favicon.ico') {
+      continue;
+    }
     const filePath = path.join(assetsDir, file);
     if (fs.lstatSync(filePath).isDirectory()) {
       // 如果是目录，递归删除

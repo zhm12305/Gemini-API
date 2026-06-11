@@ -1,38 +1,26 @@
 <template>
   <div class="backend-switcher">
     <div class="current-backend">
-      <div class="status-indicator" :class="{ connected: activeBackend?.isConnected }"></div>
-      <select 
-        v-model="selectedBackendId" 
-        @change="switchToBackend"
-        class="backend-select"
-      >
-        <option 
-          v-for="backend in backendStore.backends" 
-          :key="backend.id"
-          :value="backend.id"
-        >
-          {{ backend.name }} {{ backend.isConnected ? '●' : '○' }}
+      <span class="status-indicator" :class="{ connected: activeBackend?.isConnected }"></span>
+      <select v-model="selectedBackendId" @change="switchToBackend" class="backend-select">
+        <option v-for="backend in backendStore.backends" :key="backend.id" :value="backend.id">
+          {{ backend.name }} {{ backend.isConnected ? 'online' : 'offline' }}
         </option>
       </select>
     </div>
-    
+
     <div class="actions">
-      <button 
+      <button
         @click="testCurrentConnection"
         :disabled="testing"
-        class="btn btn-sm btn-outline"
+        class="switcher-button"
         :title="testing ? '测试中...' : '测试当前连接'"
       >
-        <span class="icon">{{ testing ? '⟳' : '🔄' }}</span>
+        {{ testing ? '测试中' : '测试' }}
       </button>
-      
-      <button 
-        @click="$emit('openManager')"
-        class="btn btn-sm btn-outline"
-        title="管理后端实例"
-      >
-        <span class="icon">⚙️</span>
+
+      <button @click="$emit('openManager')" class="switcher-button" title="管理后端实例">
+        管理
       </button>
     </div>
   </div>
@@ -42,23 +30,17 @@
 import { ref, computed, watch } from 'vue'
 import { useBackendStore } from '@/stores/backend'
 
-const emit = defineEmits(['openManager'])
+defineEmits(['openManager'])
 
 const backendStore = useBackendStore()
 const testing = ref(false)
-
-// 当前选择的后端ID
 const selectedBackendId = ref(backendStore.activeBackendId)
-
-// 当前活跃的后端
 const activeBackend = computed(() => backendStore.activeBackend)
 
-// 监听活跃后端变化
 watch(() => backendStore.activeBackendId, (newId) => {
   selectedBackendId.value = newId
 })
 
-// 切换后端
 function switchToBackend() {
   if (selectedBackendId.value !== backendStore.activeBackendId) {
     backendStore.switchBackend(selectedBackendId.value)
@@ -66,10 +48,9 @@ function switchToBackend() {
   }
 }
 
-// 测试当前连接
 async function testCurrentConnection() {
   if (!activeBackend.value) return
-  
+
   testing.value = true
   try {
     await backendStore.testBackendConnection(activeBackend.value.id)
@@ -83,100 +64,90 @@ async function testCurrentConnection() {
 
 <style scoped>
 .backend-switcher {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
+  gap: 8px;
+  min-width: 0;
+  padding: 5px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-background);
+  box-shadow: var(--shadow-sm);
 }
 
 .current-backend {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .status-indicator {
   width: 8px;
   height: 8px;
+  flex: 0 0 8px;
   border-radius: 50%;
-  background: #dc3545;
-  transition: background-color 0.3s ease;
+  background: var(--color-danger);
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
 }
 
 .status-indicator.connected {
-  background: #28a745;
+  background: var(--color-success);
+  box-shadow: 0 0 0 4px rgba(15, 159, 110, 0.12);
 }
 
 .backend-select {
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 14px;
-  background: white;
+  width: 190px;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-heading);
   cursor: pointer;
-  min-width: 150px;
-}
-
-.backend-select:focus {
+  font-size: 13px;
+  font-weight: 700;
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
 }
 
 .actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
 }
 
-.btn {
-  padding: 4px 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: white;
+.switcher-button {
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background-soft);
+  color: var(--color-text);
   cursor: pointer;
   font-size: 12px;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-weight: 700;
+  transition: all var(--transition-fast);
 }
 
-.btn:hover:not(:disabled) {
-  border-color: #007bff;
-  background: #f8f9ff;
+.switcher-button:hover:not(:disabled) {
+  border-color: var(--button-primary);
+  color: var(--button-primary);
+  background: rgba(15, 118, 110, 0.08);
 }
 
-.btn:disabled {
+.switcher-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.btn-outline {
-  color: #666;
-}
-
-.btn-sm {
-  min-width: 28px;
-  height: 28px;
-}
-
-.icon {
-  font-size: 12px;
-  user-select: none;
-}
-
-@media (max-width: 768px) {
+@media (max-width: 560px) {
   .backend-switcher {
-    padding: 6px 8px;
+    width: 100%;
   }
-  
+
+  .current-backend {
+    flex: 1;
+  }
+
   .backend-select {
-    min-width: 120px;
-    font-size: 12px;
+    width: 100%;
   }
 }
 </style>

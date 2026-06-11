@@ -34,6 +34,7 @@ app/templates/assets/
 # -----------------------------
 # Runtime data / logs
 # -----------------------------
+hajimi/
 settings/*.json
 settings/credentials/
 nginx/logs/
@@ -45,5 +46,6 @@ nginx/logs/
 .vscode/
 .idea/
 .omc/
+smithery-api-proxy/
 Thumbs.db
 .DS_Store

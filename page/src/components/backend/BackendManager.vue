@@ -1,37 +1,36 @@
 <template>
-  <div class="backend-manager">
-    <div class="header">
-      <h3>后端实例管理</h3>
+  <section class="backend-manager panel-card">
+    <div class="manager-header">
+      <div>
+        <span class="section-kicker">Instances</span>
+        <h3>后端实例管理</h3>
+      </div>
       <button @click="showAddModal = true" class="btn btn-primary">
-        <span class="icon">+</span> 添加实例
+        添加实例
       </button>
     </div>
 
     <div class="stats">
       <div class="stat-item">
-        <span class="label">总实例数：</span>
+        <span class="label">总实例数</span>
         <span class="value">{{ backendStore.backends.length }}</span>
       </div>
       <div class="stat-item">
-        <span class="label">已连接：</span>
+        <span class="label">已连接</span>
         <span class="value connected">{{ backendStore.connectedBackendsCount }}</span>
       </div>
       <div class="stat-item">
-        <span class="label">当前活跃：</span>
+        <span class="label">当前活跃</span>
         <span class="value active">{{ backendStore.activeBackend?.name || '无' }}</span>
       </div>
     </div>
 
     <div class="backend-list">
-      <div
+      <article
         v-for="backend in backendStore.backends"
         :key="backend.id"
         class="backend-item"
-        :class="{
-          active: backend.isActive,
-          connected: backend.isConnected,
-          disconnected: !backend.isConnected
-        }"
+        :class="{ active: backend.isActive, connected: backend.isConnected, disconnected: !backend.isConnected }"
       >
         <div class="backend-info">
           <div class="name-row">
@@ -42,7 +41,7 @@
               <span v-else class="badge disconnected">未连接</span>
             </div>
           </div>
-          
+
           <div class="details">
             <p class="url">{{ backend.baseUrl }}</p>
             <p v-if="backend.description" class="description">{{ backend.description }}</p>
@@ -57,35 +56,24 @@
             @click="switchBackend(backend.id)"
             :disabled="backend.isActive"
             class="btn btn-sm"
-            :class="backend.isActive ? 'btn-secondary' : 'btn-primary'"
+            :class="backend.isActive ? 'btn-outline' : 'btn-primary'"
           >
             {{ backend.isActive ? '当前活跃' : '切换' }}
           </button>
-          
-          <button
-            @click="testConnection(backend.id)"
-            :disabled="testing[backend.id]"
-            class="btn btn-sm btn-outline"
-          >
+
+          <button @click="testConnection(backend.id)" :disabled="testing[backend.id]" class="btn btn-sm btn-outline">
             {{ testing[backend.id] ? '测试中...' : '测试连接' }}
           </button>
-          
-          <button
-            @click="editBackend(backend)"
-            class="btn btn-sm btn-outline"
-          >
+
+          <button @click="editBackend(backend)" class="btn btn-sm btn-outline">
             编辑
           </button>
-          
-          <button
-            v-if="backend.id !== 'local'"
-            @click="confirmDelete(backend)"
-            class="btn btn-sm btn-danger"
-          >
+
+          <button v-if="backend.id !== 'local'" @click="confirmDelete(backend)" class="btn btn-sm btn-danger">
             删除
           </button>
         </div>
-      </div>
+      </article>
     </div>
 
     <div class="actions">
@@ -97,58 +85,37 @@
       </button>
     </div>
 
-    <!-- 添加/编辑模态框 -->
     <div v-if="showAddModal || showEditModal" class="modal-overlay" @click="closeModal">
       <div class="modal" @click.stop>
         <div class="modal-header">
           <h4>{{ showAddModal ? '添加后端实例' : '编辑后端实例' }}</h4>
           <button @click="closeModal" class="close-btn">×</button>
         </div>
-        
+
         <div class="modal-body">
           <div class="form-group">
             <label>实例名称</label>
-            <input
-              v-model="formData.name"
-              type="text"
-              placeholder="例如：生产服务器"
-              class="form-control"
-            />
+            <input v-model="formData.name" type="text" placeholder="例如：生产服务器" class="form-control" />
           </div>
-          
+
           <div class="form-group">
             <label>服务器地址</label>
-            <input
-              v-model="formData.baseUrl"
-              type="url"
-              placeholder="https://your-hajimi-instance.com"
-              class="form-control"
-            />
+            <input v-model="formData.baseUrl" type="url" placeholder="https://your-hajimi-instance.com" class="form-control" />
           </div>
-          
+
           <div class="form-group">
             <label>访问密码（可选）</label>
-            <input
-              v-model="formData.password"
-              type="password"
-              placeholder="留空如果不需要密码"
-              class="form-control"
-            />
+            <input v-model="formData.password" type="password" placeholder="留空如果不需要密码" class="form-control" />
           </div>
-          
+
           <div class="form-group">
             <label>描述（可选）</label>
-            <textarea
-              v-model="formData.description"
-              placeholder="描述这个实例的用途"
-              class="form-control"
-              rows="3"
-            ></textarea>
+            <textarea v-model="formData.description" placeholder="描述这个实例的用途" class="form-control" rows="3"></textarea>
           </div>
         </div>
-        
+
         <div class="modal-footer">
-          <button @click="closeModal" class="btn btn-secondary">取消</button>
+          <button @click="closeModal" class="btn">取消</button>
           <button @click="saveBackend" class="btn btn-primary">
             {{ showAddModal ? '添加' : '保存' }}
           </button>
@@ -156,26 +123,25 @@
       </div>
     </div>
 
-    <!-- 删除确认模态框 -->
     <div v-if="showDeleteModal" class="modal-overlay" @click="showDeleteModal = false">
       <div class="modal" @click.stop>
         <div class="modal-header">
           <h4>确认删除</h4>
           <button @click="showDeleteModal = false" class="close-btn">×</button>
         </div>
-        
+
         <div class="modal-body">
           <p>确定要删除后端实例 "{{ deleteTarget?.name }}" 吗？</p>
           <p class="warning">此操作不可恢复。</p>
         </div>
-        
+
         <div class="modal-footer">
-          <button @click="showDeleteModal = false" class="btn btn-secondary">取消</button>
+          <button @click="showDeleteModal = false" class="btn">取消</button>
           <button @click="deleteBackend" class="btn btn-danger">删除</button>
         </div>
       </div>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup>
@@ -183,8 +149,6 @@ import { ref, reactive, onMounted } from 'vue'
 import { useBackendStore } from '@/stores/backend'
 
 const backendStore = useBackendStore()
-
-// 状态
 const showAddModal = ref(false)
 const showEditModal = ref(false)
 const showDeleteModal = ref(false)
@@ -193,7 +157,6 @@ const testingAll = ref(false)
 const editingBackend = ref(null)
 const deleteTarget = ref(null)
 
-// 表单数据
 const formData = reactive({
   name: '',
   baseUrl: '',
@@ -201,23 +164,16 @@ const formData = reactive({
   description: ''
 })
 
-// 切换后端实例
 function switchBackend(backendId) {
   if (backendStore.switchBackend(backendId)) {
     backendStore.saveToStorage()
   }
 }
 
-// 测试单个连接
 async function testConnection(backendId) {
   testing[backendId] = true
   try {
-    const result = await backendStore.testBackendConnection(backendId)
-    if (result.success) {
-      console.log(`连接测试成功: ${result.message}`)
-    } else {
-      console.error(`连接测试失败: ${result.message}`)
-    }
+    await backendStore.testBackendConnection(backendId)
   } catch (error) {
     console.error('连接测试出错:', error)
   } finally {
@@ -225,12 +181,10 @@ async function testConnection(backendId) {
   }
 }
 
-// 测试所有连接
 async function testAllConnections() {
   testingAll.value = true
   try {
-    const results = await backendStore.testAllConnections()
-    console.log('所有连接测试完成:', results)
+    await backendStore.testAllConnections()
   } catch (error) {
     console.error('批量测试连接出错:', error)
   } finally {
@@ -238,12 +192,10 @@ async function testAllConnections() {
   }
 }
 
-// 刷新所有状态
 function refreshAll() {
   testAllConnections()
 }
 
-// 编辑后端
 function editBackend(backend) {
   editingBackend.value = backend
   formData.name = backend.name
@@ -253,13 +205,11 @@ function editBackend(backend) {
   showEditModal.value = true
 }
 
-// 确认删除
 function confirmDelete(backend) {
   deleteTarget.value = backend
   showDeleteModal.value = true
 }
 
-// 删除后端
 function deleteBackend() {
   if (deleteTarget.value) {
     backendStore.removeBackend(deleteTarget.value.id)
@@ -269,7 +219,6 @@ function deleteBackend() {
   }
 }
 
-// 保存后端
 function saveBackend() {
   if (!formData.name.trim() || !formData.baseUrl.trim()) {
     alert('请填写实例名称和服务器地址')
@@ -277,7 +226,6 @@ function saveBackend() {
   }
 
   if (showAddModal.value) {
-    // 添加新实例
     backendStore.addBackend({
       name: formData.name.trim(),
       baseUrl: formData.baseUrl.trim(),
@@ -285,7 +233,6 @@ function saveBackend() {
       description: formData.description.trim()
     })
   } else if (showEditModal.value && editingBackend.value) {
-    // 更新现有实例
     backendStore.updateBackend(editingBackend.value.id, {
       name: formData.name.trim(),
       baseUrl: formData.baseUrl.trim(),
@@ -298,27 +245,22 @@ function saveBackend() {
   closeModal()
 }
 
-// 关闭模态框
 function closeModal() {
   showAddModal.value = false
   showEditModal.value = false
   editingBackend.value = null
-  
-  // 重置表单
   formData.name = ''
   formData.baseUrl = ''
   formData.password = ''
   formData.description = ''
 }
 
-// 格式化时间
 function formatTime(isoString) {
   if (!isoString) return ''
   const date = new Date(isoString)
   return date.toLocaleString('zh-CN')
 }
 
-// 初始化
 onMounted(() => {
   testAllConnections()
 })
@@ -326,352 +268,280 @@ onMounted(() => {
 
 <style scoped>
 .backend-manager {
-  max-width: 1000px;
-  margin: 0 auto;
   padding: 20px;
 }
 
-.header {
+.manager-header {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
-.header h3 {
-  margin: 0;
-  color: #333;
+.manager-header h3 {
+  margin: 6px 0 0;
+  color: var(--color-heading);
+  font-size: 20px;
+  font-weight: 800;
 }
 
 .stats {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-  padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .stat-item {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--stats-item-bg);
 }
 
-.stat-item .label {
+.label {
+  display: block;
+  color: var(--color-text-muted);
   font-size: 12px;
-  color: #666;
+  font-weight: 750;
 }
 
-.stat-item .value {
-  font-weight: bold;
-  font-size: 16px;
+.value {
+  display: block;
+  margin-top: 5px;
+  color: var(--color-heading);
+  font-size: 20px;
+  font-weight: 850;
+  word-break: break-word;
 }
 
-.stat-item .value.connected {
-  color: #28a745;
+.value.connected {
+  color: var(--color-success);
 }
 
-.stat-item .value.active {
-  color: #007bff;
+.value.active {
+  color: var(--button-primary);
 }
 
 .backend-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-bottom: 20px;
+  display: grid;
+  gap: 12px;
 }
 
 .backend-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 20px;
-  border: 2px solid #e9ecef;
-  border-radius: 10px;
-  background: white;
-  transition: all 0.3s ease;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-left-width: 4px;
+  border-radius: var(--radius-lg);
+  background: var(--card-background);
+}
+
+.backend-item.connected {
+  border-left-color: var(--color-success);
+}
+
+.backend-item.disconnected {
+  border-left-color: var(--color-danger);
 }
 
 .backend-item.active {
-  border-color: #007bff;
-  background: #f8f9ff;
-}
-
-.backend-item.connected:not(.active) {
-  border-color: #28a745;
-}
-
-.backend-item.disconnected:not(.active) {
-  border-color: #dc3545;
-  background: #fff5f5;
-}
-
-.backend-info {
-  flex: 1;
-  min-width: 0;
+  border-color: rgba(15, 118, 110, 0.42);
+  border-left-color: var(--button-primary);
+  background: rgba(15, 118, 110, 0.06);
 }
 
 .name-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
+  gap: 12px;
+  align-items: flex-start;
 }
 
 .name-row h4 {
   margin: 0;
-  color: #333;
+  color: var(--color-heading);
+  font-size: 17px;
+  font-weight: 850;
 }
 
 .badges {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .badge {
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: bold;
-  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 850;
 }
 
 .badge.active {
-  background: #007bff;
-  color: white;
+  background: rgba(15, 118, 110, 0.12);
+  color: var(--button-primary);
 }
 
 .badge.connected {
-  background: #28a745;
-  color: white;
+  background: rgba(15, 159, 110, 0.12);
+  color: var(--color-success);
 }
 
 .badge.disconnected {
-  background: #dc3545;
-  color: white;
+  background: rgba(220, 38, 38, 0.12);
+  color: var(--color-danger);
+}
+
+.details {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
 }
 
 .details p {
-  margin: 5px 0;
-  font-size: 14px;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 
 .details .url {
-  color: #007bff;
-  font-family: monospace;
-}
-
-.details .description {
-  color: #666;
-}
-
-.details .last-connected {
-  color: #999;
-  font-size: 12px;
+  color: var(--button-primary);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  word-break: break-all;
 }
 
 .backend-actions {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-left: 20px;
+}
+
+.btn-sm {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
 }
 
 .actions {
   display: flex;
+  justify-content: flex-end;
   gap: 10px;
-  justify-content: center;
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
-/* 按钮样式 */
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  text-decoration: none;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: #007bff;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #0056b3;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #545b62;
-}
-
-.btn-outline {
-  background: transparent;
-  color: #007bff;
-  border: 1px solid #007bff;
-}
-
-.btn-outline:hover:not(:disabled) {
-  background: #007bff;
-  color: white;
-}
-
-.btn-danger {
-  background: #dc3545;
-  color: white;
-}
-
-.btn-danger:hover:not(:disabled) {
-  background: #c82333;
-}
-
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 12px;
-}
-
-/* 模态框样式 */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  z-index: 1200;
   display: flex;
-  justify-content: center;
   align-items: center;
-  z-index: 1000;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
 }
 
 .modal {
-  background: white;
-  border-radius: 10px;
-  width: 90%;
-  max-width: 500px;
+  width: min(100%, 520px);
   max-height: 90vh;
   overflow: auto;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-background);
+  box-shadow: var(--shadow-xl);
 }
 
-.modal-header {
+.modal-header,
+.modal-footer {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #e9ecef;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal-footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--color-border);
+  border-bottom: none;
 }
 
 .modal-header h4 {
   margin: 0;
-  color: #333;
+  color: var(--color-heading);
+  font-size: 18px;
+  font-weight: 800;
 }
 
 .close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-border);
+  background: var(--button-secondary);
+  color: var(--button-secondary-text);
   cursor: pointer;
-  color: #666;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  color: #333;
+  font-size: 20px;
 }
 
 .modal-body {
   padding: 20px;
 }
 
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 20px;
-  border-top: 1px solid #e9ecef;
-}
-
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  font-weight: 500;
-  color: #333;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 750;
 }
 
 .form-control {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-  box-sizing: border-box;
+  padding: 11px 13px;
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  color: var(--color-text);
+  outline: none;
 }
 
 .form-control:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+  border-color: var(--button-primary);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
 }
 
 .warning {
-  color: #dc3545;
-  font-weight: 500;
+  color: var(--color-danger);
+  font-weight: 750;
 }
 
-.icon {
-  font-size: 16px;
-}
-
-@media (max-width: 768px) {
-  .backend-item {
+@media (max-width: 760px) {
+  .manager-header,
+  .name-row,
+  .actions {
     flex-direction: column;
-    gap: 15px;
+    align-items: stretch;
   }
-  
+
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .backend-item {
+    grid-template-columns: 1fr;
+  }
+
   .backend-actions {
     flex-direction: row;
-    margin-left: 0;
     flex-wrap: wrap;
-  }
-  
-  .name-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-  
-  .stats {
-    flex-direction: column;
-    gap: 10px;
   }
 }
 </style>

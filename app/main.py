@@ -13,10 +13,12 @@ from app.utils import (
     check_version,
     schedule_cache_cleanup,
     handle_exception,
-    log
+    log,
+    test_api_key_status,
 )
 from app.config.persistence import save_settings, load_settings
-from app.api import router, init_router, dashboard_router, init_dashboard_router
+from app.api import router, init_router, dashboard_router, init_dashboard_router, user_router
+from app.services.user_database import user_db
 from app.vertex.vertex_ai_init import init_vertex_ai
 from app.vertex.credentials_manager import CredentialManager
 import app.config.settings as settings
@@ -90,15 +92,20 @@ async def check_remaining_keys_async(keys_to_check: list, initial_invalid_keys: 
 
     log('info', f" 开始在后台检查剩余 API Key 是否有效")
     for key in keys_to_check:
-        is_valid = await test_api_key(key)
-        if is_valid:
+        status, message = await test_api_key_status(key)
+        if status == "valid":
             if key not in key_manager.api_keys: # 避免重复添加
                 key_manager.api_keys.append(key)
                 found_valid_keys = True
             # log('info', f"API Key {key[:8]}... 有效")
-        else:
+        elif status == "invalid":
             local_invalid_keys.append(key)
-            log('warning', f" API Key {key[:8]}... 无效")
+            log('warning', f" API Key {key[:8]}... 明确无效: {message}")
+        else:
+            if key not in key_manager.api_keys:
+                key_manager.api_keys.append(key)
+                found_valid_keys = True
+            log('warning', f" API Key {key[:8]}... 临时检测失败，保留使用: {message}")
         
         await asyncio.sleep(0.05) # 短暂休眠，避免请求过于密集
 
@@ -132,6 +139,12 @@ async def startup_event():
     
     # 首先加载持久化设置，确保所有配置都是最新的
     load_settings()
+    if settings.USER_ADMIN_USERNAME and settings.USER_ADMIN_PASSWORD:
+        try:
+            user_db.ensure_admin_user(settings.USER_ADMIN_USERNAME, settings.USER_ADMIN_PASSWORD)
+            log("info", f"管理员账户已初始化: {settings.USER_ADMIN_USERNAME}")
+        except Exception as exc:
+            log("error", f"管理员账户初始化失败: {str(exc)}")
     
     
     # 重新加载vertex配置，确保获取到最新的持久化设置
@@ -159,8 +172,8 @@ async def startup_event():
 
     # 阻塞式查找第一个有效密钥
     for index, key in enumerate(initial_keys):
-        is_valid = await test_api_key(key)
-        if is_valid:
+        key_status, key_message = await test_api_key_status(key)
+        if key_status == "valid":
             log('info', f"找到第一个有效密钥: {key[:8]}...")
             first_valid_key = key
             key_manager.api_keys.append(key) # 添加到管理器
@@ -168,10 +181,20 @@ async def startup_event():
             # 将剩余的key放入后台检查列表
             keys_to_check_later = initial_keys[index + 1:]
             break # 找到即停止
+        elif key_status == "transient":
+            log('warning', f"密钥 {key[:8]}... 临时检测失败，保留到后台继续使用: {key_message}")
+            if key not in key_manager.api_keys:
+                key_manager.api_keys.append(key)
+            keys_to_check_later = initial_keys[index + 1:]
         else:
-            log('warning', f"密钥 {key[:8]}... 无效")
+            log('warning', f"密钥 {key[:8]}... 明确无效: {key_message}")
             initial_invalid_keys.append(key)
     
+    if not first_valid_key and key_manager.api_keys:
+        first_valid_key = key_manager.api_keys[0]
+        key_manager._reset_key_stack()
+        log('warning', f"启动时没有检测到立即可用 key，但保留临时失败 key 继续运行: {first_valid_key[:8]}...")
+
     if not first_valid_key:
         log('error', "启动时未能找到任何有效 API 密钥！")
         keys_to_check_later = [] # 没有有效key，无需后台检查
@@ -240,6 +263,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 app.include_router(router)
 app.include_router(dashboard_router)
+app.include_router(user_router)
 
 # 挂载静态文件目录
 app.mount("/assets", StaticFiles(directory="app/templates/assets"), name="assets")

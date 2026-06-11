@@ -173,7 +173,7 @@ defineExpose({
 .config-input:focus {
   outline: none;
   border-color: var(--button-primary);
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
 }
 
 /* 移动端优化 */

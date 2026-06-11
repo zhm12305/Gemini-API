@@ -185,7 +185,8 @@ class ApiStatsManager:
         hour_ago_ts = self._get_minute_timestamp(now - timedelta(hours=1))
         
         with self._time_series_lock:
-            return sum(data["calls"] for ts, data in self.time_buckets.items() 
+            buckets = list(self.time_buckets.items())
+            return sum(data["calls"] for ts, data in buckets 
                       if ts >= hour_ago_ts)
     
     def get_calls_last_minute(self, now=None):
@@ -196,7 +197,8 @@ class ApiStatsManager:
         minute_ago_ts = self._get_minute_timestamp(now - timedelta(minutes=1))
         
         with self._time_series_lock:
-            return sum(data["calls"] for ts, data in self.time_buckets.items() 
+            buckets = list(self.time_buckets.items())
+            return sum(data["calls"] for ts, data in buckets 
                       if ts >= minute_ago_ts)
     
     def get_time_series_data(self, minutes=30, now=None):
@@ -208,56 +210,79 @@ class ApiStatsManager:
         tokens_series = []
         
         with self._time_series_lock:
-            for i in range(minutes, -1, -1):
-                minute_dt = now - timedelta(minutes=i)
-                minute_ts = self._get_minute_timestamp(minute_dt)
-                
-                bucket = self.time_buckets.get(minute_ts, {"calls": 0, "tokens": 0})
-                
-                calls_series.append({
-                    'time': minute_dt.strftime('%H:%M'),
-                    'value': bucket["calls"]
-                })
-                
-                tokens_series.append({
-                    'time': minute_dt.strftime('%H:%M'),
-                    'value': bucket["tokens"]
-                })
+            buckets = dict(self.time_buckets)
+
+        for i in range(minutes, -1, -1):
+            minute_dt = now - timedelta(minutes=i)
+            minute_ts = self._get_minute_timestamp(minute_dt)
+            
+            bucket = buckets.get(minute_ts, {"calls": 0, "tokens": 0})
+            
+            calls_series.append({
+                'time': minute_dt.strftime('%H:%M'),
+                'value': bucket["calls"]
+            })
+            
+            tokens_series.append({
+                'time': minute_dt.strftime('%H:%M'),
+                'value': bucket["tokens"]
+            })
         
         return calls_series, tokens_series
-    
+
     def get_api_key_stats(self, api_keys):
         """获取API密钥的详细统计信息"""
         stats = []
         
         with self._counters_lock:
-            for api_key in api_keys:
-                api_key_id = api_key[:8]
-                calls_24h = self.api_key_counts[api_key]
-                total_tokens = self.api_key_tokens[api_key]
-                
-                model_stats = {}
-                for model, count in self.api_model_counts[api_key].items():
-                    tokens = self.api_model_tokens[api_key][model]
-                    model_stats[model] = {
-                        'calls': count,
-                        'tokens': tokens
-                    }
-                
-                usage_percent = (calls_24h / settings.API_KEY_DAILY_LIMIT) * 100 if settings.API_KEY_DAILY_LIMIT > 0 else 0
-                
-                stats.append({
-                    'api_key': api_key_id,
-                    'calls_24h': calls_24h,
-                    'total_tokens': total_tokens,
-                    'limit': settings.API_KEY_DAILY_LIMIT,
-                    'usage_percent': round(usage_percent, 2),
-                    'model_stats': model_stats
-                })
+            api_key_counts = Counter(self.api_key_counts)
+            api_key_tokens = Counter(self.api_key_tokens)
+            api_model_counts = {
+                api_key: Counter(model_counts)
+                for api_key, model_counts in self.api_model_counts.items()
+            }
+            api_model_tokens = {
+                api_key: Counter(model_tokens)
+                for api_key, model_tokens in self.api_model_tokens.items()
+            }
+
+        for api_key in list(api_keys):
+            api_key_id = api_key[:8]
+            calls_24h = api_key_counts[api_key]
+            total_tokens = api_key_tokens[api_key]
+            
+            model_stats = {}
+            for model, count in api_model_counts.get(api_key, Counter()).items():
+                tokens = api_model_tokens.get(api_key, Counter())[model]
+                model_stats[model] = {
+                    'calls': count,
+                    'tokens': tokens
+                }
+            
+            usage_percent = (calls_24h / settings.API_KEY_DAILY_LIMIT) * 100 if settings.API_KEY_DAILY_LIMIT > 0 else 0
+            
+            stats.append({
+                'api_key': api_key_id,
+                'calls_24h': calls_24h,
+                'total_tokens': total_tokens,
+                'limit': settings.API_KEY_DAILY_LIMIT,
+                'usage_percent': round(usage_percent, 2),
+                'model_stats': model_stats
+            })
         
         stats.sort(key=lambda x: x['usage_percent'], reverse=True)
         return stats
-    
+
+    def _legacy_get_time_series_data_removed(self):
+        pass
+
+    def _legacy_get_api_key_stats_removed(self):
+        pass
+
+    def _get_minute_timestamp(self, dt):
+        """将时间戳转换为分钟级别的时间戳（按分钟取整）"""
+        return int(dt.timestamp() // 60 * 60)
+
     async def reset(self):
         """重置所有统计数据"""
         with self._counters_lock:
@@ -277,10 +302,6 @@ class ApiStatsManager:
         self.current_minute = self._get_minute_timestamp(datetime.now())
         self.last_cleanup = time.time()
 
-    def _get_minute_timestamp(self, dt):
-        """将时间戳转换为分钟级别的时间戳（按分钟取整）"""
-        return int(dt.timestamp() // 60 * 60)
-
 # 创建全局单例实例
 api_stats_manager = ApiStatsManager()
 
@@ -293,6 +314,15 @@ async def update_api_call_stats(api_call_stats, endpoint=None, model=None, token
     """更新API调用统计的函数 (兼容旧接口)"""
     if endpoint and model:
         await api_stats_manager.update_stats(endpoint, model, token if token is not None else 0)
+        try:
+            from app.services.user_database import user_db
+            from app.utils.auth import get_current_client_key_id
+
+            client_key_id = get_current_client_key_id()
+            if client_key_id:
+                user_db.record_api_key_usage(client_key_id, token if token is not None else 0)
+        except Exception as exc:
+            log("warning", f"记录用户API Key用量失败: {str(exc)}")
 
 async def get_api_key_usage(api_call_stats, api_key, model=None):
     """获取API密钥的调用次数 (兼容旧接口)"""

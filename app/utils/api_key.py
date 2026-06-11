@@ -5,6 +5,7 @@ import logging
 import asyncio
 from apscheduler.schedulers.background import BackgroundScheduler
 from app.utils.logging import format_log_message
+from app.utils.key_health import key_health_manager
 import app.config.settings as settings
 
 logger = logging.getLogger("my_logger")
@@ -12,19 +13,30 @@ logger = logging.getLogger("my_logger")
 
 class APIKeyManager:
     def __init__(self):
-        self.api_keys = re.findall(r"AIzaSy[a-zA-Z0-9_-]{33}", settings.GEMINI_API_KEYS)
+        self.api_keys = self._parse_api_keys(settings.GEMINI_API_KEYS)
         # 加载更多 GEMINI_API_KEYS
         for i in range(1, 99):
             if keys := os.environ.get(f"GEMINI_API_KEYS_{i}", ""):
-                self.api_keys += re.findall(r"AIzaSy[a-zA-Z0-9_-]{33}", keys)
+                self.api_keys += self._parse_api_keys(keys)
             else:
                 break
+        self.api_keys = list(dict.fromkeys(self.api_keys))
 
         self.key_stack = []  # 初始化密钥栈
         self._reset_key_stack()  # 初始化时创建随机密钥栈
         self.scheduler = BackgroundScheduler()
         self.scheduler.start()
         self.lock = asyncio.Lock()  # Added lock
+
+    def _parse_api_keys(self, raw_keys: str):
+        """Parse comma-separated API tokens, including proxy-issued non-AIza keys."""
+        keys = []
+        for item in (raw_keys or "").split(","):
+            key = item.strip().strip('"').strip("'")
+            if not key or key.lower() in {"none", "null", "your_api_key", "your_gemini_api_key"}:
+                continue
+            keys.append(key)
+        return keys
 
     def _reset_key_stack(self):
         """创建并随机化密钥栈"""
@@ -46,9 +58,16 @@ class APIKeyManager:
             if not self.key_stack:
                 self._reset_key_stack()
 
-            # 从栈顶取出key
-            if self.key_stack:
-                return self.key_stack.pop()
+            skipped_keys = []
+            while self.key_stack:
+                api_key = self.key_stack.pop()
+                if key_health_manager.is_available(api_key):
+                    self.key_stack.extend(skipped_keys)
+                    return api_key
+                skipped_keys.append(api_key)
+
+            if skipped_keys:
+                self.key_stack = skipped_keys
 
             # 如果没有可用的API密钥，记录错误
             if not self.api_keys:
@@ -77,18 +96,35 @@ class APIKeyManager:
     #                            run_date=datetime.now() + timedelta(seconds=self.api_key_blacklist_duration))
 
 
-async def test_api_key(api_key: str) -> bool:
-    """
-    测试 API 密钥是否有效。
-    """
+async def test_api_key_status(api_key: str) -> tuple[str, str]:
+    """Return key check status: valid, invalid, or transient."""
     try:
         import httpx
         from app.config import settings
 
-        url = f"{settings.GEMINI_API_BASE_URL}/v1beta/models?key={api_key}"
+        url = settings.build_gemini_url("v1beta", f"models?key={api_key}")
         async with httpx.AsyncClient() as client:
-            response = await client.get(url)
+            response = await client.get(url, timeout=20)
             response.raise_for_status()
-            return True
-    except Exception:
-        return False
+            return "valid", ""
+    except Exception as exc:
+        response = getattr(exc, "response", None)
+        status_code = getattr(response, "status_code", None)
+        message = str(exc)
+        if response is not None:
+            try:
+                data = response.json()
+                message = data.get("error", {}).get("message", message)
+            except Exception:
+                message = getattr(response, "text", message)
+
+        lower_message = str(message).lower()
+        if status_code == 401 or "api key not valid" in lower_message or "invalid api key" in lower_message:
+            return "invalid", message
+        return "transient", message
+
+
+async def test_api_key(api_key: str) -> bool:
+    """测试 API 密钥是否明确可用。临时失败不会被当作永久无效。"""
+    status, _ = await test_api_key_status(api_key)
+    return status == "valid"

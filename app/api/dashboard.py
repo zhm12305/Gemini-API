@@ -18,6 +18,9 @@ from app.utils.maintenance import api_call_stats_clean
 from app.utils.logging import log, vertex_log_manager
 from app.config.persistence import save_settings
 from app.utils.stats import api_stats_manager
+from app.utils.key_health import key_health_manager
+from app.utils.api_key import test_api_key_status
+from app.services.user_database import user_db
 from typing import List
 import json
 
@@ -108,6 +111,8 @@ async def get_dashboard_data():
     
     # 获取API密钥使用统计
     api_key_stats = api_stats_manager.get_api_key_stats(key_manager.api_keys)
+    api_key_health = key_health_manager.get_stats(key_manager.api_keys)
+    user_auth_summary = user_db.get_summary() if settings.USER_API_KEYS_ENABLED else {}
     
     # 根据ENABLE_VERTEX设置决定返回哪种日志
     if settings.ENABLE_VERTEX:
@@ -119,8 +124,9 @@ async def get_dashboard_data():
     total_cache = response_cache_manager.cur_cache_num
     
     # 获取活跃请求统计
-    active_count = len(active_requests_manager.active_requests)
-    active_done = sum(1 for task in active_requests_manager.active_requests.values() if task.done())
+    active_tasks = list(active_requests_manager.active_requests.values())
+    active_count = len(active_tasks)
+    active_done = sum(1 for task in active_tasks if task.done())
     active_pending = active_count - active_done
 
     # 获取凭证数量
@@ -142,6 +148,8 @@ async def get_dashboard_data():
         "current_time": datetime.now().strftime('%H:%M:%S'),
         "logs": recent_logs,
         "api_key_stats": api_key_stats,
+        "api_key_health": api_key_health,
+        "user_auth": user_auth_summary,
         # 添加配置信息
         "max_requests_per_minute": settings.MAX_REQUESTS_PER_MINUTE,
         "max_requests_per_day_per_ip": settings.MAX_REQUESTS_PER_DAY_PER_IP,
@@ -180,6 +188,13 @@ async def get_dashboard_data():
         "max_retry_num": settings.MAX_RETRY_NUM,
         # 添加空响应重试次数限制
         "max_empty_responses": settings.MAX_EMPTY_RESPONSES,
+        "tools_enabled": settings.TOOLS_ENABLED,
+        "auto_tool_calling": settings.AUTO_TOOL_CALLING,
+        "tool_max_rounds": settings.TOOL_MAX_ROUNDS,
+        "code_execution_enabled": settings.CODE_EXECUTION_ENABLED,
+        "web_fetch_timeout": settings.WEB_FETCH_TIMEOUT,
+        "max_search_results": settings.MAX_SEARCH_RESULTS,
+        "gemini_api_base_urls": settings.get_gemini_base_urls(),
     }
 
 @dashboard_router.post("/reset-stats")
@@ -577,6 +592,46 @@ async def update_config(config_data: dict):
                 log('info', f"空响应重试次数已更新为：{value}")
             except ValueError as e:
                 raise HTTPException(status_code=422, detail=f"参数类型错误：{str(e)}")
+
+        elif config_key == "tools_enabled":
+            if not isinstance(config_value, bool):
+                raise HTTPException(status_code=422, detail="参数类型错误：应为布尔值")
+            settings.TOOLS_ENABLED = config_value
+            log('info', f"本地工具调用已更新为：{config_value}")
+
+        elif config_key == "auto_tool_calling":
+            if not isinstance(config_value, bool):
+                raise HTTPException(status_code=422, detail="参数类型错误：应为布尔值")
+            settings.AUTO_TOOL_CALLING = config_value
+            log('info', f"自动工具执行已更新为：{config_value}")
+
+        elif config_key == "code_execution_enabled":
+            if not isinstance(config_value, bool):
+                raise HTTPException(status_code=422, detail="参数类型错误：应为布尔值")
+            settings.CODE_EXECUTION_ENABLED = config_value
+            log('info', f"代码执行工具已更新为：{config_value}")
+
+        elif config_key == "tool_max_rounds":
+            try:
+                value = int(config_value)
+                if value < 0 or value > 5:
+                    raise ValueError("工具最大轮数必须在0到5之间")
+                settings.TOOL_MAX_ROUNDS = value
+                log('info', f"工具最大执行轮数已更新为：{value}")
+            except ValueError as e:
+                raise HTTPException(status_code=422, detail=f"参数类型错误：{str(e)}")
+
+        elif config_key == "google_search_api_key":
+            if not isinstance(config_value, str):
+                raise HTTPException(status_code=422, detail="参数类型错误：应为字符串")
+            settings.GOOGLE_SEARCH_API_KEY = config_value
+            log('info', "Google Search API Key 已更新")
+
+        elif config_key == "google_search_cx":
+            if not isinstance(config_value, str):
+                raise HTTPException(status_code=422, detail="参数类型错误：应为字符串")
+            settings.GOOGLE_SEARCH_CX = config_value
+            log('info', "Google Search CX 已更新")
         
         else:
             raise HTTPException(status_code=400, detail=f"不支持的配置项：{config_key}")
@@ -647,13 +702,16 @@ def check_api_key_in_thread(key):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        is_valid = loop.run_until_complete(test_api_key(key))
-        if is_valid:
+        status, message = loop.run_until_complete(test_api_key_status(key))
+        if status == "valid":
             log('info', f"API密钥 {key[:8]}... 有效")
-            return key, True
+            return key, status
+        elif status == "invalid":
+            log('warning', f"API密钥 {key[:8]}... 明确无效: {message}")
+            return key, status
         else:
-            log('warning', f"API密钥 {key[:8]}... 无效")
-            return key, False
+            log('warning', f"API密钥 {key[:8]}... 临时检测失败，保留使用: {message}")
+            return key, status
     finally:
         loop.close()
 
@@ -700,13 +758,13 @@ def start_api_key_test_in_thread(keys):
         # 检查每个密钥
         for key in all_keys_to_test:
             # 检查密钥
-            _, is_valid = check_api_key_in_thread(key)
+            _, status = check_api_key_in_thread(key)
             
             # 更新进度
             api_key_test_progress["completed"] += 1
             
             # 将密钥添加到相应列表
-            if is_valid:
+            if status in {"valid", "transient"}:
                 valid_keys.append(key)
                 api_key_test_progress["valid"] += 1
             else:

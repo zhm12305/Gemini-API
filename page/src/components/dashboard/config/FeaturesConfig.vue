@@ -16,7 +16,13 @@ const localConfig = reactive({
   concurrentRequests: 1, // Default to 1 or a sensible minimum
   increaseConcurrentOnFailure: 0,
   maxConcurrentRequests: 1, // Default to 1 or a sensible minimum
-  maxEmptyResponses: 0
+  maxEmptyResponses: 0,
+  toolsEnabled: false,
+  autoToolCalling: true,
+  toolMaxRounds: 2,
+  codeExecutionEnabled: false,
+  webFetchTimeout: 10,
+  maxSearchResults: 5
 })
 
 const populatedFromStore = ref(false);
@@ -35,6 +41,12 @@ watch(
     storeIncreaseConcurrentOnFailure: dashboardStore.config.increaseConcurrentOnFailure,
     storeMaxConcurrentRequests: dashboardStore.config.maxConcurrentRequests,
     storeMaxEmptyResponses: dashboardStore.config.maxEmptyResponses,
+    storeToolsEnabled: dashboardStore.config.toolsEnabled,
+    storeAutoToolCalling: dashboardStore.config.autoToolCalling,
+    storeToolMaxRounds: dashboardStore.config.toolMaxRounds,
+    storeCodeExecutionEnabled: dashboardStore.config.codeExecutionEnabled,
+    storeWebFetchTimeout: dashboardStore.config.webFetchTimeout,
+    storeMaxSearchResults: dashboardStore.config.maxSearchResults,
     configIsActuallyLoaded: dashboardStore.isConfigLoaded, // 观察加载状态
   }),
   (newValues) => {
@@ -50,6 +62,12 @@ watch(
       localConfig.increaseConcurrentOnFailure = newValues.storeIncreaseConcurrentOnFailure;
       localConfig.maxConcurrentRequests = newValues.storeMaxConcurrentRequests;
       localConfig.maxEmptyResponses = newValues.storeMaxEmptyResponses;
+      localConfig.toolsEnabled = newValues.storeToolsEnabled;
+      localConfig.autoToolCalling = newValues.storeAutoToolCalling;
+      localConfig.toolMaxRounds = newValues.storeToolMaxRounds;
+      localConfig.codeExecutionEnabled = newValues.storeCodeExecutionEnabled;
+      localConfig.webFetchTimeout = newValues.storeWebFetchTimeout;
+      localConfig.maxSearchResults = newValues.storeMaxSearchResults;
       populatedFromStore.value = true;
     }
   },
@@ -136,6 +154,38 @@ defineExpose({
             <input type="checkbox" class="toggle" id="randomString" v-model="localConfig.randomString">
             <label for="randomString" class="toggle-label">
               <span class="toggle-text">{{ getBooleanText(localConfig.randomString) }}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="config-row">
+        <div class="config-group">
+          <label class="config-label">本地工具调用</label>
+          <div class="toggle-wrapper">
+            <input type="checkbox" class="toggle" id="toolsEnabled" v-model="localConfig.toolsEnabled">
+            <label for="toolsEnabled" class="toggle-label">
+              <span class="toggle-text">{{ getBooleanText(localConfig.toolsEnabled) }}</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="config-group">
+          <label class="config-label">自动执行工具</label>
+          <div class="toggle-wrapper">
+            <input type="checkbox" class="toggle" id="autoToolCalling" v-model="localConfig.autoToolCalling">
+            <label for="autoToolCalling" class="toggle-label">
+              <span class="toggle-text">{{ getBooleanText(localConfig.autoToolCalling) }}</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="config-group">
+          <label class="config-label">代码执行工具</label>
+          <div class="toggle-wrapper">
+            <input type="checkbox" class="toggle" id="codeExecutionEnabled" v-model="localConfig.codeExecutionEnabled">
+            <label for="codeExecutionEnabled" class="toggle-label">
+              <span class="toggle-text">{{ getBooleanText(localConfig.codeExecutionEnabled) }}</span>
             </label>
           </div>
         </div>
@@ -232,9 +282,45 @@ defineExpose({
             min="0"
           >
         </div>
-        <!-- 可以根据需要在此行添加更多配置项 -->
-        <div class="config-group"></div>
-        <div class="config-group"></div>
+        <div class="config-group">
+          <label class="config-label">工具最大轮数</label>
+          <input 
+            type="number" 
+            class="config-input" 
+            v-model.number="localConfig.toolMaxRounds" 
+            min="0"
+            max="5"
+          >
+        </div>
+        <div class="config-group">
+          <label class="config-label">网页抓取超时(秒)</label>
+          <input 
+            type="number" 
+            class="config-input" 
+            v-model.number="localConfig.webFetchTimeout" 
+            min="1"
+          >
+        </div>
+      </div>
+
+      <div class="config-row">
+        <div class="config-group">
+          <label class="config-label">搜索结果数量</label>
+          <input 
+            type="number" 
+            class="config-input" 
+            v-model.number="localConfig.maxSearchResults" 
+            min="1"
+            max="10"
+          >
+        </div>
+        <div class="config-group full-width">
+          <label class="config-label">当前上游 Base URL 池</label>
+          <div class="readonly-list">
+            <span v-for="url in dashboardStore.config.geminiApiBaseUrls" :key="url" class="readonly-chip">{{ url }}</span>
+            <span v-if="!dashboardStore.config.geminiApiBaseUrls.length" class="readonly-chip muted">未配置</span>
+          </div>
+        </div>
       </div>
 
       <!-- 移除独立的保存区域 -->
@@ -314,7 +400,29 @@ defineExpose({
 .config-input:focus {
   outline: none;
   border-color: var(--button-primary);
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+}
+
+.readonly-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.readonly-chip {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+  color: var(--color-text);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.readonly-chip.muted {
+  color: var(--color-text-muted);
 }
 
 /* 开关样式 */
@@ -342,7 +450,7 @@ defineExpose({
   width: 36px;
   height: 20px;
   background-color: var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   margin-right: 8px;
   position: relative;
   transition: all 0.3s ease;
@@ -355,7 +463,7 @@ defineExpose({
   width: 14px;
   height: 14px;
   background-color: white;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   transition: all 0.3s ease;
 }
 

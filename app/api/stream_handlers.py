@@ -4,9 +4,11 @@ from fastapi.responses import StreamingResponse
 from app.models.schemas import ChatCompletionRequest
 from app.services import GeminiClient
 from app.utils import handle_gemini_error, update_api_call_stats,log,openAI_from_text
-from app.utils.response import openAI_from_Gemini,gemini_from_text
+from app.utils.response import openAI_from_Gemini, gemini_from_text, openai_stream_done
 from app.utils.stats import get_api_key_usage
 import app.config.settings as settings
+from app.services.tool_orchestrator import ToolOrchestrator
+from app.utils.key_health import key_health_manager
 
 async def stream_response_generator(
     chat_request,
@@ -22,6 +24,7 @@ async def stream_response_generator(
         contents, system_instruction = None,None
     else:
         is_gemini = False
+        ToolOrchestrator().maybe_inject_tools(chat_request)
         # 转换消息格式
         contents, system_instruction = GeminiClient.convert_messages(GeminiClient, chat_request.messages,model=chat_request.model)
     # 设置初始并发数
@@ -143,6 +146,7 @@ async def stream_response_generator(
                                     yield data_to_yield
                                 else:
                                     yield openAI_from_Gemini(cached_response,stream=True)
+                                    yield openai_stream_done()
                             else:
                                 success = False
                             break
@@ -169,6 +173,7 @@ async def stream_response_generator(
                     yield gemini_from_text(content="空响应次数达到上限\n请修改输入提示词",finish_reason="STOP",stream=True)
                 else:
                     yield openAI_from_text(model=chat_request.model,content="空响应次数达到上限\n请修改输入提示词",finish_reason="stop",stream=True)
+                    yield openai_stream_done()
                 
                 return
             
@@ -285,6 +290,9 @@ async def stream_response_generator(
                     model=chat_request.model,
                     token=token
                 )
+                key_health_manager.record_success(api_key)
+                if not is_gemini:
+                    yield openai_stream_done()
                 return
             
             # 如果空响应次数达到限制，跳出循环
@@ -297,6 +305,7 @@ async def stream_response_generator(
                     yield gemini_from_text(content="空响应次数达到上限\n请修改输入提示词",finish_reason="STOP",stream=True)
                 else:
                     yield openAI_from_text(model=chat_request.model,content="空响应次数达到上限\n请修改输入提示词",finish_reason="stop",stream=True)
+                    yield openai_stream_done()
                 
                 return
     
@@ -308,6 +317,7 @@ async def stream_response_generator(
         yield gemini_from_text(content="所有API密钥均请求失败\n具体错误请查看轮询日志",finish_reason="STOP",stream=True)
     else:
         yield openAI_from_text(model=chat_request.model,content="所有API密钥均请求失败\n具体错误请查看轮询日志",finish_reason="stop")
+        yield openai_stream_done()
 
 # 处理假流式模式
 async def handle_fake_streaming(api_key,chat_request, contents, response_cache_manager,system_instruction, safety_settings, safety_settings_g2, cache_key):
@@ -329,11 +339,23 @@ async def handle_fake_streaming(api_key,chat_request, contents, response_cache_m
         # 获取响应内容
         response_content = await gemini_task
         response_content.set_model(chat_request.model)
+
+        if getattr(chat_request, "tools", None):
+            response_content = await ToolOrchestrator().complete_with_tools(
+                gemini_client,
+                chat_request,
+                contents,
+                safety_settings_g2 if 'gemini-2.5' in chat_request.model else safety_settings,
+                system_instruction,
+                response_content,
+            )
+            response_content.set_model(chat_request.model)
         log('info', f"假流式成功获取响应，进行缓存",
             extra={'key': api_key[:8], 'request_type': 'fake-stream', 'model': chat_request.model})
 
         # 更新API调用统计
         await update_api_call_stats(settings.api_call_stats, endpoint=api_key, model=chat_request.model,token=response_content.total_token_count)
+        key_health_manager.record_success(api_key)
         
         # 检查响应内容是否为空
         if not response_content or (not response_content.text and not response_content.function_call):

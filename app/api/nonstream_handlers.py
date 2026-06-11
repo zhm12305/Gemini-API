@@ -10,6 +10,8 @@ import app.config.settings as settings
 from typing import Literal
 from app.utils.response import gemini_from_text, openAI_from_Gemini, openAI_from_text
 from app.utils.stats import get_api_key_usage
+from app.services.tool_orchestrator import ToolOrchestrator
+from app.utils.key_health import key_health_manager
 
 
 # 非流式请求处理函数
@@ -41,6 +43,17 @@ async def process_nonstream_request(
         # 等待受保护的 API 调用任务完成
         response_content = await shielded_gemini_task
         response_content.set_model(chat_request.model)
+
+        if getattr(chat_request, "tools", None):
+            response_content = await ToolOrchestrator().complete_with_tools(
+                gemini_client,
+                chat_request,
+                contents,
+                safety_settings_g2 if 'gemini-2.5' in chat_request.model else safety_settings,
+                system_instruction,
+                response_content,
+            )
+            response_content.set_model(chat_request.model)
         
         # 检查响应内容是否为空
         if not response_content or (not response_content.text and not response_content.function_call):
@@ -52,6 +65,7 @@ async def process_nonstream_request(
         await response_cache_manager.store(cache_key, response_content)
         # 更新 API 调用统计
         await update_api_call_stats(settings.api_call_stats, endpoint=current_api_key, model=chat_request.model,token=response_content.total_token_count)
+        key_health_manager.record_success(current_api_key)
         
         return "success"
 
@@ -99,6 +113,17 @@ async def process_nonstream_request_with_keepalive(
         keepalive_task.cancel()
         
         response_content.set_model(chat_request.model)
+
+        if getattr(chat_request, "tools", None):
+            response_content = await ToolOrchestrator().complete_with_tools(
+                gemini_client,
+                chat_request,
+                contents,
+                safety_settings_g2 if 'gemini-2.5' in chat_request.model else safety_settings,
+                system_instruction,
+                response_content,
+            )
+            response_content.set_model(chat_request.model)
         
         # 检查响应内容是否为空
         if not response_content or (not response_content.text and not response_content.function_call):
@@ -110,6 +135,7 @@ async def process_nonstream_request_with_keepalive(
         await response_cache_manager.store(cache_key, response_content)
         # 更新 API 调用统计
         await update_api_call_stats(settings.api_call_stats, endpoint=current_api_key, model=chat_request.model,token=response_content.total_token_count)
+        key_health_manager.record_success(current_api_key)
         
         return "success"
 
@@ -159,6 +185,17 @@ async def process_nonstream_request_with_simple_keepalive(
         keepalive_task.cancel()
         
         response_content.set_model(chat_request.model)
+
+        if getattr(chat_request, "tools", None):
+            response_content = await ToolOrchestrator().complete_with_tools(
+                gemini_client,
+                chat_request,
+                contents,
+                safety_settings_g2 if 'gemini-2.5' in chat_request.model else safety_settings,
+                system_instruction,
+                response_content,
+            )
+            response_content.set_model(chat_request.model)
         
         # 检查响应内容是否为空
         if not response_content or (not response_content.text and not response_content.function_call):
@@ -170,6 +207,7 @@ async def process_nonstream_request_with_simple_keepalive(
         await response_cache_manager.store(cache_key, response_content)
         # 更新 API 调用统计
         await update_api_call_stats(settings.api_call_stats, endpoint=current_api_key, model=chat_request.model,token=response_content.total_token_count)
+        key_health_manager.record_success(current_api_key)
         
         return "success"
 
@@ -214,6 +252,7 @@ async def process_request(
         contents, system_instruction = None,None
     else:
         is_gemini = False
+        ToolOrchestrator().maybe_inject_tools(chat_request)
         # 转换消息格式
         contents, system_instruction = GeminiClient.convert_messages(GeminiClient, chat_request.messages,model=chat_request.model)
 
@@ -399,6 +438,7 @@ async def process_nonstream_with_keepalive_stream(
             if format_type and (format_type == "gemini"):
                 contents, system_instruction = None, None
             else:
+                ToolOrchestrator().maybe_inject_tools(chat_request)
                 contents, system_instruction = GeminiClient.convert_messages(GeminiClient, chat_request.messages, model=chat_request.model)
 
             # 设置初始并发数

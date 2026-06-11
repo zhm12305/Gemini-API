@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 import StatusSection from '../components/dashboard/StatusSection.vue'
 import ConfigSection from '../components/dashboard/ConfigSection.vue'
 import LogSection from '../components/dashboard/LogSection.vue'
-import BackendSwitcher from '../components/backend/BackendSwitcher.vue'
 import { useDashboardStore } from '../stores/dashboard'
 import { useBackendStore } from '../stores/backend'
 
@@ -12,119 +11,79 @@ const dashboardStore = useDashboardStore()
 const backendStore = useBackendStore()
 const router = useRouter()
 const refreshInterval = ref(null)
-const isPageLoaded = ref(false)
-const animationStep = ref(0)
-const animationCompleted = ref(false)
 
-// 计算属性：夜间模式状态
 const isDarkMode = computed(() => dashboardStore.isDarkMode)
 const config = computed(() => dashboardStore.config)
+const userAuth = computed(() => dashboardStore.userAuth)
+const baseUrlText = computed(() => (config.value.geminiApiBaseUrls || []).join(' / ') || '未配置')
 
-// 密码验证对话框状态
 const showPasswordDialog = ref(false)
 const password = ref('')
 const passwordError = ref('')
 
-// 页面加载时获取数据并启动自动刷新
 onMounted(() => {
   fetchDashboardData()
   startAutoRefresh()
-  
-  // 添加开屏动画效果
-  setTimeout(() => {
-    isPageLoaded.value = true
-    
-    // 逐步触发动画
-    const animateStep = () => {
-      if (animationStep.value < 10) {
-        animationStep.value++
-        setTimeout(animateStep, 100)
-      } else {
-        // 动画完成后标记
-        animationCompleted.value = true
-      }
-    }
-    
-    setTimeout(animateStep, 50)
-  }, 50)
 })
 
-// 组件卸载时停止自动刷新
 onUnmounted(() => {
   stopAutoRefresh()
 })
 
-// 开始自动刷新
 function startAutoRefresh() {
   if (!refreshInterval.value) {
-    refreshInterval.value = setInterval(fetchDashboardData, 1000) // 1秒刷新一次
-    console.log('自动刷新已启动')
+    refreshInterval.value = setInterval(fetchDashboardData, 1000)
   }
 }
 
-// 停止自动刷新
 function stopAutoRefresh() {
   if (refreshInterval.value) {
     clearInterval(refreshInterval.value)
     refreshInterval.value = null
-    console.log('自动刷新已停止')
   }
 }
 
-// 获取仪表盘数据
 async function fetchDashboardData() {
   try {
     await dashboardStore.fetchDashboardData()
   } catch (error) {
     console.error('获取仪表盘数据失败:', error)
-    // 可以显示错误提示
   }
 }
 
-// 手动刷新
 function handleRefresh() {
   fetchDashboardData()
 }
 
-// 打开后端管理页面
 function openBackendManager() {
   router.push('/backends')
 }
 
-// 切换夜间模式
 function toggleDarkMode() {
   dashboardStore.toggleDarkMode()
 }
 
-// 打开密码验证对话框
 function openPasswordDialog() {
   showPasswordDialog.value = true
   password.value = ''
   passwordError.value = ''
 }
 
-// 关闭密码验证对话框
 function closePasswordDialog() {
   showPasswordDialog.value = false
   password.value = ''
   passwordError.value = ''
 }
 
-// 验证密码并切换Vertex
 async function verifyAndToggleVertex() {
   if (!password.value) {
     passwordError.value = '请输入密码'
     return
   }
-  
+
   try {
-    // 调用API更新配置
     await dashboardStore.updateConfig('enableVertex', !config.value.enableVertex, password.value)
-    
-    // 更新本地状态
     dashboardStore.config.enableVertex = !config.value.enableVertex
-    
-    // 关闭对话框
     closePasswordDialog()
   } catch (error) {
     passwordError.value = error.message || '密码错误'
@@ -133,838 +92,392 @@ async function verifyAndToggleVertex() {
 </script>
 
 <template>
-  <div class="dashboard" :class="{ 'page-loaded': isPageLoaded }">
-    <!-- 后端切换器 -->
-    <div class="backend-switcher-container" :class="{ 'animate-in': animationStep >= 0 || animationCompleted }">
-      <BackendSwitcher @openManager="openBackendManager" />
-    </div>
-    
-    <div class="header-container" :class="{ 'animate-in': animationStep >= 1 || animationCompleted }">
-      <div class="title-container">
-        <h1><span>🤖 Gemini API 代理服务</span></h1>
-        <div class="backend-indicator">
-          <span class="current-backend">{{ backendStore.activeBackend?.name || '未连接' }}</span>
+  <main class="dashboard">
+    <section class="page-hero">
+      <div class="hero-copy">
+        <div class="hero-heading">
+          <img :src="'/assets/favicon.ico'" alt="Gemini API Proxy" class="hero-logo">
+          <span class="section-kicker">Gemini API Proxy</span>
+        </div>
+        <h1>Gemini Key 池、工具调用与用户密钥网关</h1>
+        <p>
+          统一接收 OpenAI 与 Gemini 格式请求，后端完成 Key 轮询、健康冷却、真实模型响应透传、工具编排和用户级 API Key 分发。
+        </p>
+        <div class="hero-tags">
+          <span>OpenAI Compatible</span>
+          <span>Gemini Native</span>
+          <span>Tool Calling</span>
+          <span>User API Keys</span>
         </div>
       </div>
-      <div class="toggle-container">
-        <button class="vertex-button" :class="{ 'active': config.enableVertex }" @click="openPasswordDialog">
-          {{ config.enableVertex ? 'Vertex 开' : 'Vertex 关' }}
-        </button>
-        <button class="theme-button" :class="{ 'active': isDarkMode }" @click="toggleDarkMode">
-          {{ isDarkMode ? '🌙 夜间' : '☀️ 日间' }}
-        </button>
+
+      <div class="hero-actions">
+        <div class="runtime-card">
+          <span class="runtime-label">当前后端</span>
+          <strong>{{ backendStore.activeBackend?.name || '未连接' }}</strong>
+          <small>{{ baseUrlText }}</small>
+          <button class="text-button" @click="openBackendManager">管理实例</button>
+        </div>
+
+        <div class="action-row">
+          <button class="control-button" :class="{ active: config.enableVertex }" @click="openPasswordDialog">
+            Vertex {{ config.enableVertex ? '已启用' : '未启用' }}
+          </button>
+          <button class="control-button" :class="{ active: isDarkMode }" @click="toggleDarkMode">
+            {{ isDarkMode ? '深色模式' : '浅色模式' }}
+          </button>
+          <button class="control-button primary" @click="handleRefresh">
+            刷新数据
+          </button>
+        </div>
       </div>
+    </section>
+
+    <section class="insight-strip">
+      <div class="insight-item">
+        <span>可用 Key</span>
+        <strong>{{ dashboardStore.status.keyCount }}</strong>
+      </div>
+      <div class="insight-item">
+        <span>模型目录</span>
+        <strong>{{ dashboardStore.status.modelCount }}</strong>
+      </div>
+      <div class="insight-item">
+        <span>用户账户</span>
+        <strong>{{ userAuth.users }}</strong>
+      </div>
+      <div class="insight-item">
+        <span>用户 Key</span>
+        <strong>{{ userAuth.active_api_keys }}</strong>
+      </div>
+    </section>
+
+    <div class="dashboard-grid">
+      <StatusSection class="status-section" />
+      <ConfigSection class="config-section" />
     </div>
-    
-    <!-- 运行状态和环境配置并排显示 -->
-    <div class="sections-row">
-      <!-- 运行状态部分 -->
-      <StatusSection class="section-animate status-section" :class="{ 'animate-in': animationStep >= 2 || animationCompleted }" />
-      
-      <!-- 环境配置部分 -->
-      <ConfigSection class="section-animate config-section" :class="{ 'animate-in': animationStep >= 3 || animationCompleted }" />
-    </div>
-    
-    <!-- 系统日志部分 -->
-    <LogSection class="section-animate" :class="{ 'animate-in': animationStep >= 4 || animationCompleted }" />
-    
-    <button class="refresh-button" :class="{ 'animate-in': animationStep >= 5 || animationCompleted }" @click="handleRefresh">刷新数据</button>
-    
-    <!-- 密码验证对话框 -->
+
+    <LogSection />
+
     <div class="password-dialog" v-if="showPasswordDialog">
       <div class="password-dialog-content">
-        <h3>验证密码</h3>
-        <p>请输入密码以{{ config.enableVertex ? '禁用' : '启用' }} Vertex AI</p>
-        <div class="password-input-container">
-          <input 
-            type="password" 
-            v-model="password"
-            class="password-input"
-            placeholder="请输入密码"
-            @keyup.enter="verifyAndToggleVertex"
-          >
-          <div class="password-error" v-if="passwordError">{{ passwordError }}</div>
-        </div>
+        <h3>验证管理密码</h3>
+        <p>请输入密码以{{ config.enableVertex ? '禁用' : '启用' }} Vertex AI。</p>
+        <input
+          type="password"
+          v-model="password"
+          class="password-input"
+          placeholder="请输入密码"
+          @keyup.enter="verifyAndToggleVertex"
+        >
+        <div class="password-error" v-if="passwordError">{{ passwordError }}</div>
         <div class="password-actions">
-          <button class="cancel-btn" @click="closePasswordDialog">取消</button>
-          <button class="confirm-btn" @click="verifyAndToggleVertex">确认</button>
+          <button class="dialog-button" @click="closePasswordDialog">取消</button>
+          <button class="dialog-button primary" @click="verifyAndToggleVertex">确认</button>
         </div>
       </div>
     </div>
-  </div>
+  </main>
 </template>
 
-<style>
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  line-height: 1.6;
-  background-color: var(--color-background);
-  color: var(--color-text);
-  margin: 0;
-  padding: 0;
-  transition: background-color 0.3s, color 0.3s;
-}
-
+<style scoped>
 .dashboard {
-  max-width: 1200px;
+  width: min(100%, var(--content-width));
   margin: 0 auto;
-  padding: 20px;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: opacity 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  padding: 28px 22px 42px;
 }
 
-.dashboard.page-loaded {
-  opacity: 1;
-  transform: translateY(0);
+.page-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+  gap: 22px;
+  align-items: stretch;
+  margin-bottom: 18px;
 }
 
-/* 后端切换器容器 */
-.backend-switcher-container {
-  position: sticky;
-  top: 20px;
-  z-index: 100;
-  margin-bottom: 20px;
-  opacity: 0;
-  transform: translateY(-20px);
-  transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.backend-switcher-container.animate-in {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.header-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  opacity: 0;
-  transform: translateY(20px) scale(0.95);
-  transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  background: var(--gradient-primary);
-  padding: 20px;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
-  position: relative;
-  overflow: hidden;
-}
-
-.header-container::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.1), transparent 70%);
-  z-index: 0;
-}
-
-.header-container::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: radial-gradient(circle at bottom left, rgba(255, 255, 255, 0.1), transparent 70%);
-  z-index: 0;
-}
-
-.header-container.animate-in {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
-
-.title-container {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  flex-wrap: wrap;
-  position: relative;
-  z-index: 1;
-}
-
-.backend-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.current-backend {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(5px);
-}
-
-.toggle-container {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  position: relative;
-  z-index: 1;
-}
-
-.vertex-button, .theme-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(255, 255, 255, 0.15);
-  padding: 8px 16px;
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.3s ease;
-  box-shadow: var(--shadow-md);
-  cursor: pointer;
-  font-size: 0.9rem;
-  color: white;
-  font-weight: 500;
-  min-width: 90px;
-  backdrop-filter: blur(5px);
-}
-
-.vertex-button.active, .theme-button.active {
-  background-color: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.3);
-  color: white;
-}
-
-.vertex-button:hover, .theme-button:hover {
-  background-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-}
-
-h1 {
-  color: white;
-  margin: 0;
-  font-size: 1.8rem;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-/* 按钮样式替代滑块 */
-.vertex-toggle, .theme-toggle, .switch, .slider {
-  display: none;
-}
-
-/* 并排显示部分 */
-.sections-row {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.status-section, .config-section {
-  width: 100%;
-}
-
-/* 移动端优化 - 减小整体边距 */
-@media (max-width: 768px) {
-  .dashboard {
-    padding: 10px 8px;
-  }
-  
-  .header-container {
-    flex-direction: row;
-    align-items: center;
-    margin-bottom: 15px;
-    padding: 15px;
-  }
-  
-  .title-container {
-    width: auto;
-    justify-content: flex-start;
-    margin-bottom: 0;
-    flex: 1;
-  }
-  
-  h1 {
-    font-size: 1.4rem;
-    text-align: left;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  
-  h1::before {
-    content: '🤖Gemini代理';
-  }
-  
-  h1 span {
-    display: none;
-  }
-  
-  .toggle-container {
-    width: auto;
-    justify-content: flex-end;
-    flex-direction: row;
-    gap: 8px;
-    margin-top: 0;
-    align-self: center;
-  }
-  
-  .vertex-button, .theme-button {
-    padding: 6px 12px;
-    font-size: 0.8rem;
-    min-width: 80px;
-  }
-  
-  /* 移动端下保持垂直布局 */
-  .sections-row {
-    flex-direction: column;
-    gap: 15px;
-  }
-}
-
-@media (max-width: 480px) {
-  .dashboard {
-    padding: 6px 4px;
-  }
-  
-  .header-container {
-    flex-direction: row;
-    align-items: center;
-    margin-bottom: 15px;
-    padding: 12px;
-  }
-  
-  .title-container {
-    width: auto;
-    justify-content: flex-start;
-    margin-bottom: 0;
-    flex: 1;
-  }
-  
-  h1 {
-    font-size: 1.1rem;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  
-  .toggle-container {
-    width: auto;
-    justify-content: flex-end;
-    flex-direction: row;
-    gap: 4px;
-    margin-top: 0;
-    align-self: center;
-  }
-  
-  .vertex-button, .theme-button {
-    padding: 4px 8px;
-    font-size: 0.65rem;
-    min-width: 70px;
-  }
-  
-  /* 移动端下保持垂直布局 */
-  .sections-row {
-    flex-direction: column;
-    gap: 10px;
-  }
-}
-
-.refresh-button {
-  display: block;
-  margin: 20px auto;
-  padding: 12px 24px;
-  background: var(--gradient-secondary);
-  color: white;
-  border: none;
+.hero-copy,
+.runtime-card,
+.insight-strip,
+.password-dialog-content {
+  border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  opacity: 0;
-  transform: translateY(20px) scale(0.95);
+  background: var(--card-background);
   box-shadow: var(--shadow-md);
+}
+
+.hero-copy {
+  padding: 26px;
   position: relative;
   overflow: hidden;
 }
 
-.refresh-button::before {
+.hero-copy::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transform: translateX(-100%);
-  transition: transform 0.6s ease;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--accent-bar);
 }
 
-.refresh-button:hover::before {
-  transform: translateX(100%);
+.hero-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.refresh-button.animate-in {
-  opacity: 1;
-  transform: translateY(0) scale(1);
+.hero-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
 }
 
-.refresh-button:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-lg);
+.hero-copy h1 {
+  margin: 8px 0 10px;
+  color: var(--color-heading);
+  font-size: 42px;
+  line-height: 1.08;
+  font-weight: 850;
+  letter-spacing: 0;
 }
 
-/* 全局响应式样式 - 保持三栏布局但优化显示 */
-@media (max-width: 768px) {
-  /* 覆盖所有组件中的卡片样式 */
-  :deep(.info-box) {
-    padding: 15px 10px;
-    margin-bottom: 15px;
-    border-radius: var(--radius-lg);
-    background-color: var(--card-background);
-    border: 1px solid var(--card-border);
-    box-shadow: var(--shadow-md);
-    position: relative;
-    overflow: hidden;
-  }
-  
-  :deep(.info-box)::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 100%;
-    background: var(--gradient-primary);
-  }
-  
-  :deep(.section-title) {
-    font-size: 1.1rem;
-    margin-bottom: 15px;
-    padding-bottom: 8px;
-    color: var(--color-heading);
-    border-bottom: 1px solid var(--color-border);
-    position: relative;
-  }
-  
-  :deep(.section-title)::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    width: 50px;
-    height: 2px;
-    background: var(--gradient-primary);
-  }
-  
-  :deep(.stats-grid) {
-    gap: 10px;
-    margin-top: 15px;
-    margin-bottom: 20px;
-  }
-  
-  .refresh-button {
-    margin: 20px auto;
-    padding: 10px 20px;
-    font-size: 14px;
-  }
+.hero-copy p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 15px;
 }
 
-/* 小屏幕手机适配 */
-@media (max-width: 480px) {
-  :deep(.info-box) {
-    padding: 12px 8px;
-    margin-bottom: 10px;
-    border-radius: var(--radius-md);
-  }
-  
-  :deep(.section-title) {
-    font-size: 1rem;
-    margin-bottom: 10px;
-    padding-bottom: 6px;
-  }
-  
-  :deep(.stats-grid) {
-    gap: 8px;
-    margin-top: 10px;
-    margin-bottom: 15px;
-  }
-  
-  .refresh-button {
-    margin: 15px auto;
-    padding: 8px 16px;
-    font-size: 13px;
-  }
+.hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
 }
 
-/* 开屏动画效果 */
-.section-animate {
-  opacity: 0;
-  transform: translateY(20px) scale(0.95);
-  transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+.hero-tags span {
+  padding: 6px 9px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--stats-item-bg);
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
-.section-animate.animate-in {
-  opacity: 1;
-  transform: translateY(0) scale(1);
+.hero-actions {
+  display: grid;
+  gap: 12px;
 }
 
-/* 子元素动画 */
-:deep(.stats-grid) {
-  opacity: 0;
-  transform: translateY(10px) scale(0.98);
-  transition: opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+.runtime-card {
+  display: grid;
+  gap: 6px;
+  padding: 20px;
 }
 
-.animate-in :deep(.stats-grid) {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  transition-delay: 0.1s;
+.runtime-label {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 700;
 }
 
-/* 卡片动画 */
-:deep(.stat-card) {
-  opacity: 0;
-  transform: scale(0.9) translateY(10px);
-  transition: opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s, background-color 0.3s;
-  position: relative;
+.runtime-card strong {
+  color: var(--color-heading);
+  font-size: 24px;
+  font-weight: 850;
+  word-break: break-word;
+}
+
+.runtime-card small {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.text-button {
+  justify-self: start;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--button-primary);
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.control-button {
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--card-background);
+  color: var(--color-text);
+  cursor: pointer;
+  font-weight: 750;
+  transition: all var(--transition-fast);
+}
+
+.control-button:hover {
+  border-color: var(--button-primary);
+  color: var(--button-primary);
+  transform: translateY(-1px);
+}
+
+.control-button.active {
+  background: rgba(15, 118, 110, 0.1);
+  border-color: rgba(15, 118, 110, 0.35);
+  color: var(--button-primary);
+}
+
+.control-button.primary {
+  grid-column: 1 / -1;
+  background: var(--button-primary);
+  color: #ffffff;
+  border-color: var(--button-primary);
+}
+
+.insight-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
   overflow: hidden;
+  margin-bottom: 18px;
+  background: var(--color-border);
 }
 
-:deep(.stat-card)::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 4px;
-  background: var(--gradient-secondary);
-  opacity: 0;
-  transition: opacity 0.3s ease;
+.insight-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  background: var(--card-background);
 }
 
-:deep(.stat-card:hover)::before {
-  opacity: 1;
+.insight-item span {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 700;
 }
 
-.animate-in :deep(.stat-card) {
-  opacity: 1;
-  transform: scale(1) translateY(0);
+.insight-item strong {
+  color: var(--color-heading);
+  font-size: 18px;
+  font-weight: 850;
 }
 
-.animate-in :deep(.stat-card:nth-child(1)) {
-  transition-delay: 0.15s;
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
+  gap: 18px;
+  align-items: start;
 }
 
-.animate-in :deep(.stat-card:nth-child(2)) {
-  transition-delay: 0.2s;
-}
-
-.animate-in :deep(.stat-card:nth-child(3)) {
-  transition-delay: 0.25s;
-}
-
-.animate-in :deep(.stat-card:nth-child(4)) {
-  transition-delay: 0.3s;
-}
-
-.animate-in :deep(.stat-card:nth-child(5)) {
-  transition-delay: 0.35s;
-}
-
-.animate-in :deep(.stat-card:nth-child(6)) {
-  transition-delay: 0.4s;
-}
-
-.animate-in :deep(.stat-card:nth-child(7)) {
-  transition-delay: 0.45s;
-}
-
-.animate-in :deep(.stat-card:nth-child(8)) {
-  transition-delay: 0.5s;
-}
-
-/* 日志条目动画 */
-:deep(.log-entry) {
-  opacity: 0;
-  transform: translateX(-10px) scale(0.98);
-  transition: opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-:deep(.log-entry)::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
-  transform: translateX(-100%);
-  transition: transform 0.6s ease;
-}
-
-:deep(.log-entry:hover)::after {
-  transform: translateX(100%);
-}
-
-.animate-in :deep(.log-entry) {
-  opacity: 1;
-  transform: translateX(0) scale(1);
-}
-
-.animate-in :deep(.log-entry:nth-child(1)) {
-  transition-delay: 0.15s;
-}
-
-.animate-in :deep(.log-entry:nth-child(2)) {
-  transition-delay: 0.2s;
-}
-
-.animate-in :deep(.log-entry:nth-child(3)) {
-  transition-delay: 0.25s;
-}
-
-.animate-in :deep(.log-entry:nth-child(4)) {
-  transition-delay: 0.3s;
-}
-
-.animate-in :deep(.log-entry:nth-child(5)) {
-  transition-delay: 0.35s;
-}
-
-.animate-in :deep(.log-entry:nth-child(n+6)) {
-  transition-delay: 0.4s;
-}
-
-/* 添加飞入动画效果 */
-@keyframes flyIn {
-  0% {
-    opacity: 0;
-    transform: translateY(30px) scale(0.9);
-  }
-  50% {
-    opacity: 0.5;
-    transform: translateY(15px) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes flyInFromLeft {
-  0% {
-    opacity: 0;
-    transform: translateX(-20px) scale(0.9);
-  }
-  50% {
-    opacity: 0.5;
-    transform: translateX(-10px) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
-@keyframes flyInFromRight {
-  0% {
-    opacity: 0;
-    transform: translateX(20px) scale(0.9);
-  }
-  50% {
-    opacity: 0.5;
-    transform: translateX(10px) scale(0.95);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
-/* 应用飞入动画 */
-.header-container.animate-in {
-  animation: flyIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-.section-animate.animate-in {
-  animation: flyIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-.animate-in :deep(.stat-card:nth-child(odd)) {
-  animation: flyInFromLeft 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-.animate-in :deep(.stat-card:nth-child(even)) {
-  animation: flyInFromRight 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-.animate-in :deep(.log-entry) {
-  animation: flyInFromLeft 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-.refresh-button.animate-in {
-  animation: flyIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
-
-/* 密码验证对话框样式 */
 .password-dialog {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  z-index: 1200;
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  z-index: 1000;
-  padding-top: 100px;
-  backdrop-filter: blur(5px);
+  padding: 110px 18px 18px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
 }
 
 .password-dialog-content {
-  background-color: var(--card-background);
-  border-radius: var(--radius-xl);
-  padding: 25px;
-  width: 90%;
-  max-width: 400px;
-  box-shadow: var(--shadow-xl);
-  position: relative;
-  overflow: hidden;
-}
-
-.password-dialog-content::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 5px;
-  background: var(--gradient-primary);
+  width: min(100%, 420px);
+  padding: 22px;
 }
 
 .password-dialog-content h3 {
-  margin-top: 0;
-  margin-bottom: 10px;
+  margin: 0 0 8px;
   color: var(--color-heading);
-  font-size: 1.3rem;
+  font-size: 20px;
+  font-weight: 800;
 }
 
 .password-dialog-content p {
-  margin-bottom: 15px;
-  color: var(--color-text);
-  font-size: 14px;
-}
-
-.password-input-container {
-  margin-bottom: 20px;
-  position: relative;
+  margin: 0 0 16px;
+  color: var(--color-text-muted);
 }
 
 .password-input {
   width: 100%;
-  padding: 12px 16px;
+  padding: 11px 13px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background-color: var(--color-background);
+  background: var(--color-background);
   color: var(--color-text);
-  font-size: 14px;
-  transition: all 0.3s ease;
+  outline: none;
 }
 
 .password-input:focus {
-  outline: none;
   border-color: var(--button-primary);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
 }
 
 .password-error {
-  color: #ef4444;
-  font-size: 12px;
-  margin-top: 8px;
-  padding-left: 5px;
+  margin-top: 10px;
+  color: var(--color-danger);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .password-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+  margin-top: 18px;
 }
 
-.cancel-btn, .confirm-btn {
-  padding: 10px 18px;
-  border-radius: var(--radius-md);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.cancel-btn {
-  background-color: var(--button-secondary);
+.dialog-button {
+  min-height: 38px;
+  padding: 8px 14px;
   border: 1px solid var(--color-border);
+  background: var(--button-secondary);
   color: var(--button-secondary-text);
+  cursor: pointer;
+  font-weight: 750;
 }
 
-.confirm-btn {
-  background: var(--gradient-primary);
-  border: none;
-  color: white;
-  box-shadow: var(--shadow-sm);
+.dialog-button.primary {
+  border-color: var(--button-primary);
+  background: var(--button-primary);
+  color: #ffffff;
 }
 
-.cancel-btn:hover {
-  background-color: var(--button-secondary-hover);
-  transform: translateY(-2px);
-}
-
-.confirm-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-/* 移动端优化 */
-@media (max-width: 768px) {
-  .password-dialog {
-    padding-top: 80px;
+@media (max-width: 1020px) {
+  .page-hero,
+  .dashboard-grid {
+    grid-template-columns: 1fr;
   }
-  
-  .password-dialog-content {
+}
+
+@media (max-width: 640px) {
+  .dashboard {
+    padding: 18px 12px 30px;
+  }
+
+  .hero-copy {
     padding: 20px;
   }
-}
 
-@media (max-width: 480px) {
-  .password-dialog {
-    padding-top: 60px;
+  .hero-copy h1 {
+    font-size: 30px;
   }
-  
-  .password-dialog-content {
-    padding: 15px;
+
+  .action-row,
+  .insight-strip {
+    grid-template-columns: 1fr;
   }
-  
-  .password-dialog-content h3 {
-    font-size: 1.1rem;
-  }
-  
-  .password-dialog-content p {
-    font-size: 12px;
-  }
-  
-  .password-input {
-    font-size: 12px;
-    padding: 10px 14px;
-  }
-  
-  .cancel-btn, .confirm-btn {
-    padding: 8px 14px;
-    font-size: 12px;
+
+  .insight-item {
+    padding: 13px 14px;
   }
 }
 </style>

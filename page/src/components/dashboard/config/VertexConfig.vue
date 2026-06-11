@@ -204,7 +204,7 @@ function getBooleanText(value) {
 .config-input:focus {
   outline: none;
   border-color: var(--button-primary);
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
 }
 
 .text-area {
@@ -239,7 +239,7 @@ function getBooleanText(value) {
   width: 36px;
   height: 20px;
   background-color: var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   margin-right: 8px;
   position: relative;
   transition: all 0.3s ease;
@@ -252,7 +252,7 @@ function getBooleanText(value) {
   width: 14px;
   height: 14px;
   background-color: white;
-  border-radius: 50%;
+  border-radius: var(--radius-sm);
   transition: all 0.3s ease;
 }
 

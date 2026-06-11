@@ -1,200 +1,149 @@
-/* color palette from <https://github.com/vuejs/theme> */
 :root {
-  --vt-c-white: #ffffff;
-  --vt-c-white-soft: #f8f8f8;
-  --vt-c-white-mute: #f2f2f2;
+  --color-background: #f4f6f5;
+  --color-background-soft: #e9efed;
+  --color-background-mute: #dde7e4;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f8faf9;
+  --color-border: #d3dedb;
+  --color-border-hover: #9fb4ae;
+  --color-heading: #15201d;
+  --color-text: #33413d;
+  --color-text-muted: #687873;
+  --color-success: #0f9f6e;
+  --color-warning: #c97a12;
+  --color-danger: #dc2626;
+  --color-info: #0e7490;
+  --color-error: #dc2626;
+  --color-error-bg: #fef2f2;
+  --color-success-bg: #ecfdf5;
 
-  --vt-c-black: #181818;
-  --vt-c-black-soft: #222222;
-  --vt-c-black-mute: #282828;
+  --card-background: var(--color-surface);
+  --card-border: var(--color-border);
+  --stats-item-bg: var(--color-surface-raised);
+  --log-entry-bg: #0c1010;
+  --log-entry-border: #26302d;
+  --code-background: #eef4f2;
+  --input-background: #ffffff;
 
-  --vt-c-indigo: #2c3e50;
-
-  --vt-c-divider-light-1: rgba(60, 60, 60, 0.29);
-  --vt-c-divider-light-2: rgba(60, 60, 60, 0.12);
-  --vt-c-divider-dark-1: rgba(84, 84, 84, 0.65);
-  --vt-c-divider-dark-2: rgba(84, 84, 84, 0.48);
-
-  --vt-c-text-light-1: var(--vt-c-indigo);
-  --vt-c-text-light-2: rgba(60, 60, 60, 0.66);
-  --vt-c-text-dark-1: var(--vt-c-white);
-  --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
-}
-
-/* semantic color variables for this project */
-:root {
-  --color-background: var(--vt-c-white);
-  --color-background-soft: var(--vt-c-white-soft);
-  --color-background-mute: var(--vt-c-white-mute);
-
-  --color-border: var(--vt-c-divider-light-2);
-  --color-border-hover: var(--vt-c-divider-light-1);
-
-  --color-heading: var(--vt-c-text-light-1);
-  --color-text: var(--vt-c-text-light-1);
-
-  --section-gap: 160px;
-  
-  /* 自定义颜色变量 - 浅色模式 */
-  --card-background: #ffffff;
-  --card-border: #e0e0e0;
-  --button-primary: #4f46e5;
-  --button-primary-hover: #4338ca;
-  --button-secondary: #f3f4f6;
-  --button-secondary-hover: #e5e7eb;
-  --button-secondary-text: #4b5563;
+  --button-primary: #0f766e;
+  --button-primary-hover: #115e59;
+  --button-secondary: #e8eef4;
+  --button-secondary-hover: #d7e1ea;
+  --button-secondary-text: #263747;
   --button-text: #ffffff;
-  --stats-item-bg: #f8f9fa;
-  --log-entry-bg: #f8f9fa;
-  --log-entry-border: #e9ecef;
-  --toggle-bg: #ccc;
-  --toggle-active: #4f46e5;
-  
-  /* 新增渐变色变量 */
-  --gradient-primary: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-  --gradient-secondary: linear-gradient(135deg, #3b82f6 0%, #2dd4bf 100%);
-  --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  --gradient-info: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  
-  /* 新增阴影效果 */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  
-  /* 新增圆角变量 */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-  --radius-2xl: 1rem;
-  --radius-full: 9999px;
-  
-  /* 新增动画变量 */
-  --transition-fast: 150ms;
-  --transition-normal: 300ms;
-  --transition-slow: 500ms;
+
+  --gradient-primary: linear-gradient(135deg, #0f766e 0%, #0e7490 100%);
+  --gradient-secondary: linear-gradient(135deg, #0e7490 0%, #16a34a 100%);
+  --gradient-success: linear-gradient(135deg, #0f9f6e 0%, #0f766e 100%);
+  --gradient-warning: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  --gradient-danger: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  --gradient-info: linear-gradient(135deg, #0e7490 0%, #0f766e 100%);
+  --accent-bar: linear-gradient(180deg, #14b8a6 0%, #f59e0b 100%);
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 12px 28px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 18px 45px rgba(15, 23, 42, 0.12);
+  --shadow-xl: 0 24px 60px rgba(15, 23, 42, 0.16);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --radius-2xl: 8px;
+  --radius-full: 8px;
+
+  --transition-fast: 150ms ease;
+  --transition-normal: 220ms ease;
+  --transition-slow: 420ms ease;
+  --content-width: 1240px;
 }
 
-/* 夜间模式变量 */
 .dark-mode {
-  --color-background: var(--vt-c-black);
-  --color-background-soft: var(--vt-c-black-soft);
-  --color-background-mute: var(--vt-c-black-mute);
+  --color-background: #090b0b;
+  --color-background-soft: #101413;
+  --color-background-mute: #171d1b;
+  --color-surface: #111615;
+  --color-surface-raised: #161d1b;
+  --color-border: #26312e;
+  --color-border-hover: #40504b;
+  --color-heading: #f4fbf8;
+  --color-text: #d5e0dc;
+  --color-text-muted: #91a19c;
+  --color-success: #34d399;
+  --color-warning: #f59e0b;
+  --color-danger: #f87171;
+  --color-info: #22d3ee;
+  --color-error: #f87171;
+  --color-error-bg: rgba(220, 38, 38, 0.12);
+  --color-success-bg: rgba(15, 159, 110, 0.12);
 
-  --color-border: var(--vt-c-divider-dark-2);
-  --color-border-hover: var(--vt-c-divider-dark-1);
+  --card-background: var(--color-surface);
+  --card-border: var(--color-border);
+  --stats-item-bg: var(--color-surface-raised);
+  --log-entry-bg: #0b0b0b;
+  --log-entry-border: #2d2d2d;
+  --code-background: #0b0f0e;
+  --input-background: #0d1211;
 
-  --color-heading: var(--vt-c-text-dark-1);
-  --color-text: rgba(255, 255, 255, 0.85);
-  
-  /* 自定义夜间模式颜色 */
-  --card-background: #1a1a1a;
-  --card-border: #2a2a2a;
-  --button-primary: #8b5cf6;
-  --button-primary-hover: #7c3aed;
-  --button-secondary: #2a2a2a;
-  --button-secondary-hover: #3a3a3a;
-  --button-secondary-text: #f1f5f9;
-  --button-text: #ffffff;
-  --stats-item-bg: #151515;
-  --log-entry-bg: #151515;
-  --log-entry-border: #2a2a2a;
-  --toggle-bg: #3a3a3a;
-  --toggle-active: #8b5cf6;
-  
-  /* 深色模式渐变色 */
-  --gradient-primary: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
-  --gradient-secondary: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  --gradient-success: linear-gradient(135deg, #10b981 0%, #047857 100%);
-  --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
-  --gradient-danger: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
-  --gradient-info: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
-  
-  /* 深色模式阴影 */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
-}
+  --button-primary: #14b8a6;
+  --button-primary-hover: #0f9f8f;
+  --button-secondary: #252525;
+  --button-secondary-hover: #303030;
+  --button-secondary-text: #e5e7eb;
 
-/* 保留系统偏好设置的支持 */
-@media (prefers-color-scheme: dark) {
-  :root:not(.dark-mode):not(.light-mode) {
-    --color-background: var(--vt-c-black);
-    --color-background-soft: var(--vt-c-black-soft);
-    --color-background-mute: var(--vt-c-black-mute);
-
-    --color-border: var(--vt-c-divider-dark-2);
-    --color-border-hover: var(--vt-c-divider-dark-1);
-
-    --color-heading: var(--vt-c-text-dark-1);
-    --color-text: rgba(255, 255, 255, 0.85);
-    
-    /* 自定义夜间模式颜色 */
-    --card-background: #1a1a1a;
-    --card-border: #2a2a2a;
-    --button-primary: #8b5cf6;
-    --button-primary-hover: #7c3aed;
-    --button-secondary: #2a2a2a;
-    --button-secondary-hover: #3a3a3a;
-    --button-secondary-text: #f1f5f9;
-    --button-text: #ffffff;
-    --stats-item-bg: #151515;
-    --log-entry-bg: #151515;
-    --log-entry-border: #2a2a2a;
-    --toggle-bg: #3a3a3a;
-    --toggle-active: #8b5cf6;
-    
-    /* 深色模式渐变色 */
-    --gradient-primary: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
-    --gradient-secondary: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-    --gradient-success: linear-gradient(135deg, #10b981 0%, #047857 100%);
-    --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
-    --gradient-danger: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
-    --gradient-info: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
-    
-    /* 深色模式阴影 */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
-  }
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 14px 32px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.36);
+  --shadow-xl: 0 26px 70px rgba(0, 0, 0, 0.46);
 }
 
 *,
 *::before,
 *::after {
   box-sizing: border-box;
-  margin: 0;
-  font-weight: normal;
+}
+
+html {
+  background: var(--color-background);
 }
 
 body {
   min-height: 100vh;
+  margin: 0;
   color: var(--color-text);
-  background: var(--color-background);
-  transition:
-    color 0.5s,
-    background-color 0.5s;
-  line-height: 1.6;
+  background:
+    linear-gradient(180deg, rgba(20, 184, 166, 0.12), transparent 290px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    var(--color-background);
+  background-size: auto, 42px 42px, 42px 42px, auto;
   font-family:
     Inter,
+    ui-sans-serif,
+    system-ui,
     -apple-system,
     BlinkMacSystemFont,
-    'Segoe UI',
+    "Segoe UI",
     Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    'Fira Sans',
-    'Droid Sans',
-    'Helvetica Neue',
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
     sans-serif;
   font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: 0;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  border-radius: var(--radius-md);
 }

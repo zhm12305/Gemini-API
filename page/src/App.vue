@@ -16,7 +16,7 @@ import Navigation from './components/Navigation.vue'
 body {
   margin: 0;
   padding: 0;
-  background-color: #f8f9fa;
+  background-color: var(--color-background);
 }
 
 #app {
@@ -28,10 +28,5 @@ body {
 .main-content {
   flex: 1;
   padding-top: 0;
-}
-
-/* 移除重复的导航组件，使用统一的导航 */
-.backend-switcher-container {
-  display: none;
 }
 </style>

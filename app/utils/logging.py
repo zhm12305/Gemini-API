@@ -5,11 +5,12 @@ from collections import deque
 from threading import Lock
 from dataclasses import asdict, is_dataclass
 from enum import Enum
+from app.utils.tracing import get_request_id
 
 DEBUG = False  # 可以从环境变量中获取
 
-LOG_FORMAT_DEBUG = '%(asctime)s - %(levelname)s - [%(key)s]-%(request_type)s-[%(model)s]-%(status_code)s: %(message)s - %(error_message)s'
-LOG_FORMAT_NORMAL = '[%(asctime)s] [%(levelname)s] [%(key)s]-%(request_type)s-[%(model)s]-%(status_code)s: %(message)s'
+LOG_FORMAT_DEBUG = '%(asctime)s - %(levelname)s - [%(trace_id)s]-[%(key)s]-%(request_type)s-[%(model)s]-%(status_code)s: %(message)s - %(error_message)s'
+LOG_FORMAT_NORMAL = '[%(asctime)s] [%(levelname)s] [%(trace_id)s]-[%(key)s]-%(request_type)s-[%(model)s]-%(status_code)s: %(message)s'
 
 # Vertex日志格式
 VERTEX_LOG_FORMAT_DEBUG = '%(asctime)s - %(levelname)s - [%(vertex_id)s]-%(operation)s-[%(status)s]: %(message)s - %(error_message)s'
@@ -66,6 +67,7 @@ def format_log_message(level, message, extra=None):
     log_values = {
         'asctime': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         'levelname': level,
+        'trace_id': extra.get('trace_id') or get_request_id(),
         'key': extra.get('key', ''),
         'request_type': extra.get('request_type', ''),
         'model': extra.get('model', ''),
@@ -80,6 +82,7 @@ def format_log_message(level, message, extra=None):
     log_entry = {
         'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         'level': level,
+        'trace_id': extra.get('trace_id') or get_request_id(),
         'key': extra.get('key', ''),
         'request_type': extra.get('request_type', ''),
         'model': extra.get('model', ''),

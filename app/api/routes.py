@@ -11,6 +11,7 @@ from .nonstream_handlers import process_request, process_nonstream_with_keepaliv
 from app.models.schemas import ChatCompletionRequest, ChatCompletionResponse, ModelList, AIRequest, ChatRequestGemini
 import app.config.settings as settings
 import asyncio
+from app.utils.tracing import new_request_id, set_request_id
 from app.vertex.routes import chat_api, models_api
 from app.vertex.models import OpenAIRequest, OpenAIMessage
 
@@ -125,6 +126,13 @@ async def aistudio_chat_completions(
     _ = Depends(custom_verify_password),
     _2 = Depends(verify_user_agent),
 ):
+    request_id = http_request.headers.get("X-Request-ID") or new_request_id()
+    set_request_id(request_id)
+    log(
+        'info',
+        f"请求进入: {http_request.url.path}",
+        extra={'request_type': 'stream' if request.stream else 'non-stream', 'model': request.model, 'trace_id': request_id}
+    )
     format_type = getattr(request, 'format_type', None)
     if format_type and (format_type == "gemini"):
         is_gemini = True

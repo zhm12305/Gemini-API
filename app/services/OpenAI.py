@@ -110,7 +110,7 @@ class OpenAIClient:
             extra=extra_log,
         )
 
-        url = f"{settings.GEMINI_API_BASE_URL}/v1beta/openai/chat/completions"
+        url = settings.build_gemini_url("v1beta", "openai/chat/completions")
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",

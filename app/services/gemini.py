@@ -9,7 +9,10 @@ import string
 import app.config.settings as settings
 
 from app.utils.logging import log, log_model_json
-from app.utils.model_limits import apply_gemini_3_flash_rest_generation_config
+from app.utils.model_limits import (
+    apply_gemini_3_flash_rest_generation_config,
+    protect_short_output_from_thinking,
+)
 
 
 def generate_secure_random_string(length):
@@ -166,6 +169,11 @@ class GeminiClient:
                 # 将 Pydantic 模型转换为字典, 假设 Pydantic V2+
                 data = request.payload.model_dump(exclude_none=True)
                 generation_config = data.setdefault("generationConfig", {})
+                protect_short_output_from_thinking(
+                    request.model,
+                    generation_config,
+                    explicit_thinking="thinkingConfig" in generation_config,
+                )
                 apply_gemini_3_flash_rest_generation_config(
                     request.model,
                     generation_config,
@@ -228,6 +236,11 @@ class GeminiClient:
                 "thinkingBudget": request.thinking_budget
             }
         generationConfig = {k: v for k, v in config_params.items() if v is not None}
+        protect_short_output_from_thinking(
+            model_for_config,
+            generationConfig,
+            explicit_thinking=request.thinking_budget is not None,
+        )
         apply_gemini_3_flash_rest_generation_config(
             model_for_config,
             generationConfig,
@@ -258,9 +271,8 @@ class GeminiClient:
                         }
                         # 获取 parameters 并移除可能存在的 $schema 字段
                         parameters = func_def.get("parameters")
-                        if isinstance(parameters, dict) and "$schema" in parameters:
-                            parameters = parameters.copy()
-                            del parameters["$schema"]
+                        if isinstance(parameters, dict):
+                            parameters = self._sanitize_tool_schema(parameters)
                         if parameters is not None:
                             declaration["parameters"] = parameters
 
@@ -272,7 +284,7 @@ class GeminiClient:
                             function_declarations.append(declaration)
 
         if function_declarations:
-            data["tools"] = [{"function_declarations": function_declarations}]
+            data["tools"] = [{"functionDeclarations": function_declarations}]
 
         # 2. 添加 tool_config (基于 tool_choice)
         tool_config = None
@@ -295,17 +307,39 @@ class GeminiClient:
             if mode:
                 config: Dict[str, Union[str, List[str]]] = {"mode": mode}
                 if allowed_functions:
-                    config["allowed_function_names"] = allowed_functions
-                tool_config = {"function_calling_config": config}
+                    config["allowedFunctionNames"] = allowed_functions
+                tool_config = {"functionCallingConfig": config}
 
         # 3. 添加 tool_config 到 data
         if tool_config and function_declarations:
-            data["tool_config"] = tool_config
+            data["toolConfig"] = tool_config
 
         if system_instruction:
             data["system_instruction"] = system_instruction
 
         return api_version, data
+
+    def _sanitize_tool_schema(self, schema):
+        if isinstance(schema, list):
+            return [self._sanitize_tool_schema(item) for item in schema]
+        if not isinstance(schema, dict):
+            return schema
+
+        unsupported_keys = {
+            "$schema",
+            "additionalProperties",
+            "default",
+            "examples",
+            "maximum",
+            "minimum",
+            "pattern",
+            "title",
+        }
+        return {
+            key: self._sanitize_tool_schema(value)
+            for key, value in schema.items()
+            if key not in unsupported_keys
+        }
 
     # 流式请求
     async def stream_chat(self, request, contents, safety_settings, system_instruction):
@@ -332,7 +366,10 @@ class GeminiClient:
             extra=extra_log,
         )
 
-        url = f"{settings.GEMINI_API_BASE_URL}/{api_version}/models/{model}:streamGenerateContent?key={self.api_key}&alt=sse"
+        url = settings.build_gemini_url(
+            api_version,
+            f"models/{model}:streamGenerateContent?key={self.api_key}&alt=sse",
+        )
         headers = {
             "Content-Type": "application/json",
         }
@@ -408,7 +445,10 @@ class GeminiClient:
             extra=extra_log,
         )
 
-        url = f"{settings.GEMINI_API_BASE_URL}/{api_version}/models/{model}:generateContent?key={self.api_key}"
+        url = settings.build_gemini_url(
+            api_version,
+            f"models/{model}:generateContent?key={self.api_key}",
+        )
         headers = {
             "Content-Type": "application/json",
         }
@@ -592,7 +632,7 @@ class GeminiClient:
 
     @staticmethod
     async def list_available_models(api_key) -> list:
-        url = f"{settings.GEMINI_API_BASE_URL}/v1beta/models?key={api_key}"
+        url = settings.build_gemini_url("v1beta", f"models?key={api_key}")
         async with httpx.AsyncClient() as client:
             response = await client.get(url)
             response.raise_for_status()
@@ -614,7 +654,7 @@ class GeminiClient:
         """
         获取原生Gemini模型列表
         """
-        url = f"{settings.GEMINI_API_BASE_URL}/v1beta/models?key={api_key}"
+        url = settings.build_gemini_url("v1beta", f"models?key={api_key}")
         async with httpx.AsyncClient() as client:
             response = await client.get(url)
             response.raise_for_status()

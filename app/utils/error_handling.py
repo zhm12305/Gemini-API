@@ -5,6 +5,7 @@ import asyncio
 from fastapi import HTTPException, status
 from app.utils.logging import format_log_message
 from app.utils.logging import log
+from app.utils.key_health import key_health_manager
 
 logger = logging.getLogger("my_logger")
 
@@ -16,22 +17,26 @@ def handle_gemini_error(error, current_api_key) -> str:
             try:
                 error_data = error.response.json()
                 if 'error' in error_data:
-                    if error_data['error'].get('code') == "invalid_argument":
+                    error_message_raw = error_data['error'].get('message', 'Bad Request')
+                    if "api key not valid" in str(error_message_raw).lower() or "invalid api key" in str(error_message_raw).lower():
                         error_message = "无效的 API 密钥"
                         log('ERROR', f"{current_api_key[:8]} ... {current_api_key[-3:]} → 无效，可能已过期或被删除", 
                             extra={'key': current_api_key[:8], 'status_code': status_code, 'error_message': error_message})
                         # key_manager.blacklist_key(current_api_key)
+                        key_health_manager.record_failure(current_api_key, error_message, status_code)
                         
                         return error_message
-                    error_message = error_data['error'].get('message', 'Bad Request')
+                    error_message = error_message_raw
                     
                     log('WARNING', f"400 错误请求: {error_message}", 
                         extra={'key': current_api_key[:8], 'status_code': status_code, 'error_message': error_message})
+                    key_health_manager.record_failure(current_api_key, error_message, status_code)
                     return f"400 错误请求: {error_message}"
             except ValueError:
                 error_message = "400 错误请求：响应不是有效的JSON格式"
                 extra_log_400_json = {'key': current_api_key[:8], 'status_code': status_code, 'error_message': error_message}
                 log('WARNING', error_message, extra=extra_log_400_json)
+                key_health_manager.record_failure(current_api_key, error_message, status_code)
                 return error_message
 
         elif status_code == 403:
@@ -39,6 +44,7 @@ def handle_gemini_error(error, current_api_key) -> str:
             log('ERROR', error_message, 
                 extra={'key': current_api_key[:8], 'status_code': status_code})
             # key_manager.blacklist_key(current_api_key)
+            key_health_manager.record_failure(current_api_key, error_message, status_code)
             
             return error_message
         
@@ -47,6 +53,7 @@ def handle_gemini_error(error, current_api_key) -> str:
             log('WARNING', error_message, 
                 extra={'key': current_api_key[:8], 'status_code': status_code})
             # key_manager.blacklist_key(current_api_key)
+            key_health_manager.record_failure(current_api_key, error_message, status_code)
              
             return error_message
         
@@ -54,33 +61,39 @@ def handle_gemini_error(error, current_api_key) -> str:
             error_message = f'Gemini API 内部错误' 
             log('WARNING', error_message, 
                 extra={'key': current_api_key[:8], 'status_code': status_code})
+            key_health_manager.record_failure(current_api_key, error_message, status_code)
             return error_message
   
         if status_code == 503:
             error_message = f"Gemini API 服务繁忙"
             log('WARNING', error_message, 
                 extra={'key': current_api_key[:8], 'status_code': status_code})
+            key_health_manager.record_failure(current_api_key, error_message, status_code)
             return error_message
         
         else:
             error_message = f"未知错误: {status_code}"
             log('WARNING', f"{status_code} 未知错误", 
                 extra={'key': current_api_key[:8], 'status_code': status_code, 'error_message': error_message})
+            key_health_manager.record_failure(current_api_key, error_message, status_code)
             
             return f"未知错误/模型不可用: {status_code}"
 
     elif isinstance(error, requests.exceptions.ConnectionError):
         error_message = "连接错误"
         log('WARNING', error_message, extra={'error_message': error_message})
+        key_health_manager.record_failure(current_api_key, error_message)
         return error_message
 
     elif isinstance(error, requests.exceptions.Timeout):
         error_message = "请求超时"
         log('WARNING', error_message, extra={'error_message': error_message})
+        key_health_manager.record_failure(current_api_key, error_message)
         return error_message
     else:
         error_message = f"发生未知错误: {error}"
         log('ERROR', error_message, extra={'error_message': error_message})
+        key_health_manager.record_failure(current_api_key, error_message)
         return error_message
 
 def translate_error(message: str) -> str:

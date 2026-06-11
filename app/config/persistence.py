@@ -94,7 +94,10 @@ def load_settings():
                     if name == "GEMINI_API_KEYS":
                         loaded_api_keys = value.split(',') if value else []
                         loaded_api_keys = [key.strip() for key in loaded_api_keys if key.strip()]
-                        all_keys = list(set(current_api_keys + loaded_api_keys))
+                        if current_api_keys:
+                            all_keys = list(dict.fromkeys(current_api_keys))
+                        else:
+                            all_keys = list(dict.fromkeys(loaded_api_keys))
                         setattr(settings, name, ','.join(all_keys))
                     # 特殊处理GOOGLE_CREDENTIALS_JSON，如果当前环境变量中有值，则优先使用环境变量中的值
                     elif name == "GOOGLE_CREDENTIALS_JSON":

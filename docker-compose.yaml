@@ -14,15 +14,35 @@ services:
     environment:
       - TZ=Asia/Shanghai
       - ENABLE_STORAGE=true
+      - USER_DB_PATH=/hajimi/settings/users.db
     volumes:
       - ./settings:/hajimi/settings
+      - ./app:/app/app
       # 挂载前端模板文件（如果需要自定义前端）
       - ./app/templates:/app/app/templates
       # 挂载修复后的配置和服务文件
       - ./app/config/settings.py:/app/app/config/settings.py
       - ./app/utils/api_key.py:/app/app/utils/api_key.py
+      - ./app/utils/auth.py:/app/app/utils/auth.py
+      - ./app/utils/key_health.py:/app/app/utils/key_health.py
+      - ./app/utils/tracing.py:/app/app/utils/tracing.py
+      - ./app/utils/logging.py:/app/app/utils/logging.py
+      - ./app/utils/model_limits.py:/app/app/utils/model_limits.py
+      - ./app/utils/response.py:/app/app/utils/response.py
+      - ./app/utils/stats.py:/app/app/utils/stats.py
+      - ./app/main.py:/app/app/main.py
       - ./app/services/gemini.py:/app/app/services/gemini.py
       - ./app/services/OpenAI.py:/app/app/services/OpenAI.py
+      - ./app/services/tool_manager.py:/app/app/services/tool_manager.py
+      - ./app/services/tool_orchestrator.py:/app/app/services/tool_orchestrator.py
+      - ./app/services/user_database.py:/app/app/services/user_database.py
+      - ./app/api/__init__.py:/app/app/api/__init__.py
+      - ./app/api/nonstream_handlers.py:/app/app/api/nonstream_handlers.py
+      - ./app/api/stream_handlers.py:/app/app/api/stream_handlers.py
+      - ./app/api/dashboard.py:/app/app/api/dashboard.py
+      - ./app/api/user_auth.py:/app/app/api/user_auth.py
+      - ./app/models/tool_models.py:/app/app/models/tool_models.py
+      - ./app/tools:/app/app/tools
     restart: unless-stopped
     networks:
       - hajimi-network

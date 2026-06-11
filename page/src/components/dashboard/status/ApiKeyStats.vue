@@ -421,6 +421,28 @@ const totalCalls = computed(() => {
 const totalTokens = computed(() => {
   return dashboardStore.apiKeyStats.reduce((sum, key) => sum + key.total_tokens, 0)
 })
+
+const healthByKey = computed(() => {
+  return dashboardStore.apiKeyHealth.reduce((acc, item) => {
+    acc[item.api_key] = item
+    return acc
+  }, {})
+})
+
+function getHealthStatus(apiKey) {
+  return healthByKey.value[apiKey] || { status: 'healthy', cooldown_remaining: 0, failure_count: 0 }
+}
+
+function getHealthText(status) {
+  const map = {
+    healthy: '健康',
+    cooling: '冷却中',
+    quota_exceeded: '配额耗尽',
+    invalid: '无效',
+    region_blocked: '地区限制'
+  }
+  return map[status] || status
+}
 </script>
 
 <template>
@@ -787,6 +809,17 @@ const totalTokens = computed(() => {
                 :class="getProgressBarClass(stat.usage_percent)"
                 :style="{ width: Math.min(stat.usage_percent, 100) + '%' }"
               ></div>
+            </div>
+
+            <div class="key-health" :class="`health-${getHealthStatus(stat.api_key).status}`">
+              <span class="health-dot"></span>
+              <span>{{ getHealthText(getHealthStatus(stat.api_key).status) }}</span>
+              <span v-if="getHealthStatus(stat.api_key).cooldown_remaining">
+                {{ getHealthStatus(stat.api_key).cooldown_remaining }} 秒后重试
+              </span>
+              <span v-if="getHealthStatus(stat.api_key).failure_count">
+                失败 {{ getHealthStatus(stat.api_key).failure_count }} 次
+              </span>
             </div>
             
             <!-- 显示总token使用量 -->
@@ -1533,13 +1566,13 @@ const totalTokens = computed(() => {
   padding: 8px;
   margin-top: 5px;
   border-radius: var(--radius-md);
-  background-color: rgba(79, 70, 229, 0.05);
+  background-color: rgba(15, 118, 110, 0.06);
   transition: all 0.3s ease;
   border: 1px dashed var(--button-primary);
 }
 
 .view-more-models:hover {
-  background-color: rgba(79, 70, 229, 0.1);
+  background-color: rgba(15, 118, 110, 0.1);
   transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
 }
@@ -1651,6 +1684,38 @@ const totalTokens = computed(() => {
   font-weight: 600;
   color: var(--button-primary);
   transition: all 0.3s ease;
+}
+
+.key-health {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--color-background-mute);
+}
+
+.health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+}
+
+.health-cooling .health-dot,
+.health-quota_exceeded .health-dot {
+  background: var(--color-warning);
+}
+
+.health-invalid .health-dot,
+.health-region_blocked .health-dot {
+  background: var(--color-danger);
 }
 
 /* 分页控件样式 */
@@ -1959,7 +2024,7 @@ const totalTokens = computed(() => {
 .api-key-textarea:focus {
   outline: none;
   border-color: var(--button-primary);
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
 }
 
 .api-key-password {
@@ -1977,7 +2042,7 @@ const totalTokens = computed(() => {
 .api-key-password:focus {
   outline: none;
   border-color: var(--button-primary);
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
 }
 
 .api-key-error {

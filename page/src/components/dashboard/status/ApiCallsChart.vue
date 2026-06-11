@@ -33,16 +33,18 @@ function initChart() {
   
   // 获取当前主题模式
   const isDark = dashboardStore.isDarkMode
-  const textColor = isDark ? '#e0e0e0' : '#666'
-  const axisLineColor = isDark ? '#555' : '#ccc'
+  const textColor = isDark ? '#d6d6d6' : '#64748b'
+  const axisLineColor = isDark ? '#3a3a3a' : '#dbe3eb'
   
   // 图表配置
   const option = {
     title: {
-      text: 'API实时调用统计',
-      left: 'center',
+      text: 'API 实时调用统计',
+      left: 0,
       textStyle: {
-        color: textColor
+        color: isDark ? '#f5f5f5' : '#17212b',
+        fontWeight: 700,
+        fontSize: 15
       }
     },
     tooltip: {
@@ -94,7 +96,7 @@ function initChart() {
         axisLine: {
           show: true,
           lineStyle: {
-            color: '#5470c6'
+            color: '#2563eb'
           }
         },
         axisLabel: {
@@ -114,7 +116,7 @@ function initChart() {
         axisLine: {
           show: true,
           lineStyle: {
-            color: '#91cc75'
+            color: '#0f9f6e'
           }
         },
         axisLabel: {
@@ -135,12 +137,12 @@ function initChart() {
         smooth: true,
         data: chartData.value.apiCalls,
         itemStyle: {
-          color: '#5470c6'
+          color: '#2563eb'
         },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(84, 112, 198, 0.5)' },
-            { offset: 1, color: 'rgba(84, 112, 198, 0.1)' }
+            { offset: 0, color: 'rgba(37, 99, 235, 0.24)' },
+            { offset: 1, color: 'rgba(37, 99, 235, 0.02)' }
           ])
         }
       },
@@ -151,12 +153,12 @@ function initChart() {
         smooth: true,
         data: chartData.value.tokens,
         itemStyle: {
-          color: '#91cc75'
+          color: '#0f9f6e'
         },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(145, 204, 117, 0.5)' },
-            { offset: 1, color: 'rgba(145, 204, 117, 0.1)' }
+            { offset: 0, color: 'rgba(15, 159, 110, 0.24)' },
+            { offset: 1, color: 'rgba(15, 159, 110, 0.02)' }
           ])
         }
       }
@@ -313,25 +315,10 @@ onUnmounted(() => {
 .api-calls-chart-container {
   margin: 20px 0;
   border-radius: var(--radius-lg);
-  background-color: var(--stats-item-bg);
-  padding: 15px;
+  background: var(--stats-item-bg);
+  padding: 16px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--card-border);
-  transition: all 0.3s ease;
-}
-
-.api-calls-chart-container:hover {
-  box-shadow: var(--shadow-md);
-  border-color: var(--button-primary);
-  transform: translateY(-3px);
-}
-
-.chart-title {
-  margin-top: 0;
-  margin-bottom: 15px;
-  color: var(--color-heading);
-  font-weight: 600;
-  text-align: center;
 }
 
 .chart-container {

@@ -1,103 +1,75 @@
 <template>
-  <div class="backend-view">
-    <div class="header">
+  <main class="backend-view">
+    <section class="backend-hero">
       <div class="title-section">
+        <span class="section-kicker">Backend Routing</span>
         <h1>后端实例管理</h1>
-        <p class="subtitle">管理和切换不同的 Hajimi 后端实例</p>
+        <p class="subtitle">维护多个 Hajimi 后端地址，快速切换当前控制台连接目标。</p>
       </div>
-      
+
       <BackendSwitcher @openManager="scrollToManager" />
-    </div>
+    </section>
 
-    <div class="content">
-      <!-- 概览卡片 -->
-      <div class="overview-cards">
-        <div class="card">
-          <div class="card-icon">🏠</div>
-          <div class="card-content">
-            <h3>{{ backendStore.backends.length }}</h3>
-            <p>总实例数</p>
-          </div>
-        </div>
-        
-        <div class="card">
-          <div class="card-icon">✅</div>
-          <div class="card-content">
-            <h3>{{ backendStore.connectedBackendsCount }}</h3>
-            <p>已连接</p>
-          </div>
-        </div>
-        
-        <div class="card">
-          <div class="card-icon">⚡</div>
-          <div class="card-content">
-            <h3>{{ backendStore.activeBackend?.name || '无' }}</h3>
-            <p>当前活跃</p>
-          </div>
-        </div>
-        
-        <div class="card">
-          <div class="card-icon">🔄</div>
-          <div class="card-content">
-            <h3>{{ formatTime(backendStore.activeBackend?.lastConnected) || '从未' }}</h3>
-            <p>最后连接</p>
-          </div>
-        </div>
+    <section class="overview-cards">
+      <div class="card">
+        <span class="card-label">实例总数</span>
+        <strong>{{ backendStore.backends.length }}</strong>
       </div>
 
-      <!-- 快速操作 -->
-      <div class="quick-actions">
+      <div class="card">
+        <span class="card-label">已连接</span>
+        <strong>{{ backendStore.connectedBackendsCount }}</strong>
+      </div>
+
+      <div class="card wide">
+        <span class="card-label">当前活跃</span>
+        <strong>{{ backendStore.activeBackend?.name || '无' }}</strong>
+      </div>
+
+      <div class="card wide">
+        <span class="card-label">最后连接</span>
+        <strong>{{ formatTime(backendStore.activeBackend?.lastConnected) || '从未' }}</strong>
+      </div>
+    </section>
+
+    <section class="quick-actions panel-card">
+      <div>
+        <span class="section-kicker">Operations</span>
         <h2>快速操作</h2>
-        <div class="action-buttons">
-          <button @click="testAllConnections" :disabled="testingAll" class="btn btn-primary">
-            <span class="icon">🔍</span>
-            {{ testingAll ? '测试中...' : '测试所有连接' }}
-          </button>
-          
-          <button @click="showAddModal = true" class="btn btn-success">
-            <span class="icon">➕</span>
-            添加新实例
-          </button>
-          
-          <button @click="exportConfig" class="btn btn-outline">
-            <span class="icon">📤</span>
-            导出配置
-          </button>
-          
-          <button @click="importConfig" class="btn btn-outline">
-            <span class="icon">📥</span>
-            导入配置
-          </button>
-          
-          <button @click="showUserGuide" class="btn btn-outline">
-            <span class="icon">❓</span>
-            使用指南
-          </button>
-        </div>
       </div>
+      <div class="action-buttons">
+        <button @click="testAllConnections" :disabled="testingAll" class="btn btn-primary">
+          {{ testingAll ? '测试中...' : '测试所有连接' }}
+        </button>
+        <button @click="showAddModal = true" class="btn btn-primary">
+          添加新实例
+        </button>
+        <button @click="exportConfig" class="btn btn-outline">
+          导出配置
+        </button>
+        <button @click="importConfig" class="btn btn-outline">
+          导入配置
+        </button>
+        <button @click="showUserGuide" class="btn btn-outline">
+          使用指南
+        </button>
+      </div>
+    </section>
 
-      <!-- 后端管理器 -->
-      <div ref="managerRef">
-        <BackendManager />
-      </div>
+    <div ref="managerRef">
+      <BackendManager />
     </div>
 
-    <!-- 添加实例快速模态框 -->
     <div v-if="showAddModal" class="modal-overlay" @click="closeAddModal">
       <div class="modal quick-add-modal" @click.stop>
         <div class="modal-header">
           <h4>快速添加后端实例</h4>
           <button @click="closeAddModal" class="close-btn">×</button>
         </div>
-        
+
         <div class="modal-body">
           <div class="preset-buttons">
-            <button 
-              v-for="preset in presets" 
-              :key="preset.id"
-              @click="usePreset(preset)"
-              class="preset-btn"
-            >
+            <button v-for="preset in presets" :key="preset.id" @click="usePreset(preset)" class="preset-btn">
               <div class="preset-icon">{{ preset.icon }}</div>
               <div class="preset-info">
                 <h5>{{ preset.name }}</h5>
@@ -105,9 +77,9 @@
               </div>
             </button>
           </div>
-          
+
           <div class="divider">或手动添加</div>
-          
+
           <div class="form-group">
             <label>服务器地址</label>
             <input
@@ -119,32 +91,19 @@
             />
           </div>
         </div>
-        
+
         <div class="modal-footer">
-          <button @click="closeAddModal" class="btn btn-secondary">取消</button>
-          <button 
-            @click="quickAddInstance" 
-            :disabled="!quickAddUrl.trim()"
-            class="btn btn-primary"
-          >
+          <button @click="closeAddModal" class="btn">取消</button>
+          <button @click="quickAddInstance" :disabled="!quickAddUrl.trim()" class="btn btn-primary">
             添加
           </button>
         </div>
       </div>
     </div>
 
-    <!-- 隐藏的文件输入 -->
-    <input
-      ref="fileInput"
-      type="file"
-      accept=".json"
-      style="display: none"
-      @change="handleFileImport"
-    />
-
-    <!-- 用户指南 -->
+    <input ref="fileInput" type="file" accept=".json" style="display: none" @change="handleFileImport" />
     <UserGuide ref="userGuideRef" />
-  </div>
+  </main>
 </template>
 
 <script setup>
@@ -155,8 +114,6 @@ import BackendSwitcher from '@/components/backend/BackendSwitcher.vue'
 import UserGuide from '@/components/backend/UserGuide.vue'
 
 const backendStore = useBackendStore()
-
-// 状态
 const testingAll = ref(false)
 const showAddModal = ref(false)
 const quickAddUrl = ref('')
@@ -164,32 +121,30 @@ const managerRef = ref(null)
 const fileInput = ref(null)
 const userGuideRef = ref(null)
 
-// 预设配置
 const presets = [
   {
     id: 'localhost',
     name: '本地开发',
-    icon: '🏠',
+    icon: 'Local',
     description: '本地开发服务器 (localhost:7860)',
     baseUrl: 'http://localhost:7860'
   },
   {
     id: 'production',
     name: '生产服务器',
-    icon: '🚀',
+    icon: 'Prod',
     description: '生产环境服务器',
     baseUrl: 'https://'
   },
   {
     id: 'staging',
     name: '测试服务器',
-    icon: '🧪',
+    icon: 'Test',
     description: '测试环境服务器',
     baseUrl: 'https://'
   }
 ]
 
-// 测试所有连接
 async function testAllConnections() {
   testingAll.value = true
   try {
@@ -201,30 +156,22 @@ async function testAllConnections() {
   }
 }
 
-// 使用预设
 function usePreset(preset) {
-  if (preset.id === 'localhost') {
-    quickAddUrl.value = preset.baseUrl
-  } else {
-    quickAddUrl.value = preset.baseUrl
-  }
+  quickAddUrl.value = preset.baseUrl
 }
 
-// 快速添加实例
 function quickAddInstance() {
   if (!quickAddUrl.value.trim()) return
-  
+
   try {
     const url = new URL(quickAddUrl.value)
-    const name = url.hostname
-    
     backendStore.addBackend({
-      name: name,
+      name: url.hostname,
       baseUrl: quickAddUrl.value.trim(),
       password: '',
       description: `通过快速添加创建: ${url.hostname}`
     })
-    
+
     backendStore.saveToStorage()
     closeAddModal()
   } catch (error) {
@@ -232,27 +179,24 @@ function quickAddInstance() {
   }
 }
 
-// 关闭添加模态框
 function closeAddModal() {
   showAddModal.value = false
   quickAddUrl.value = ''
 }
 
-// 滚动到管理器
 function scrollToManager() {
   if (managerRef.value) {
     managerRef.value.scrollIntoView({ behavior: 'smooth' })
   }
 }
 
-// 导出配置
 function exportConfig() {
   const config = {
     backends: backendStore.backends,
     activeBackendId: backendStore.activeBackendId,
     exportTime: new Date().toISOString()
   }
-  
+
   const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -264,32 +208,29 @@ function exportConfig() {
   URL.revokeObjectURL(url)
 }
 
-// 导入配置
 function importConfig() {
   fileInput.value?.click()
 }
 
-// 处理文件导入
 function handleFileImport(event) {
   const file = event.target.files[0]
   if (!file) return
-  
+
   const reader = new FileReader()
   reader.onload = (e) => {
     try {
       const config = JSON.parse(e.target.result)
-      
+
       if (config.backends && Array.isArray(config.backends)) {
-        // 合并配置，保留本地实例
         const localBackend = backendStore.backends.find(b => b.id === 'local')
         const importedBackends = config.backends.filter(b => b.id !== 'local')
-        
+
         backendStore.backends.splice(0, backendStore.backends.length)
         if (localBackend) {
           backendStore.backends.push(localBackend)
         }
         backendStore.backends.push(...importedBackends)
-        
+
         backendStore.saveToStorage()
         alert(`成功导入 ${importedBackends.length} 个后端实例`)
       } else {
@@ -300,24 +241,19 @@ function handleFileImport(event) {
     }
   }
   reader.readAsText(file)
-  
-  // 清空文件输入
   event.target.value = ''
 }
 
-// 显示用户指南
 function showUserGuide() {
   userGuideRef.value?.show()
 }
 
-// 格式化时间
 function formatTime(isoString) {
   if (!isoString) return ''
   const date = new Date(isoString)
   return date.toLocaleString('zh-CN')
 }
 
-// 初始化
 onMounted(() => {
   testAllConnections()
 })
@@ -325,376 +261,262 @@ onMounted(() => {
 
 <style scoped>
 .backend-view {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
+  width: min(100%, var(--content-width));
   min-height: 100vh;
+  margin: 0 auto;
+  padding: 28px 22px 42px;
 }
 
-.header {
+.backend-hero {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 30px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #e9ecef;
+  gap: 18px;
+  margin-bottom: 18px;
+  padding: 24px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-background);
+  box-shadow: var(--shadow-sm);
 }
 
 .title-section h1 {
-  margin: 0 0 8px 0;
-  color: #333;
-  font-size: 28px;
-  font-weight: 600;
+  margin: 6px 0 8px;
+  color: var(--color-heading);
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.1;
+  font-weight: 850;
 }
 
 .subtitle {
   margin: 0;
-  color: #666;
-  font-size: 16px;
-}
-
-.content {
-  display: flex;
-  flex-direction: column;
-  gap: 30px;
+  color: var(--color-text-muted);
 }
 
 .overview-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
 .card {
+  display: grid;
+  gap: 6px;
+  min-height: 112px;
+  padding: 18px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-background);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-label {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.card strong {
+  align-self: end;
+  color: var(--color-heading);
+  font-size: 24px;
+  font-weight: 850;
+  word-break: break-word;
+}
+
+.card.wide strong {
+  font-size: 18px;
+}
+
+.quick-actions {
   display: flex;
-  align-items: center;
-  gap: 16px;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
   padding: 20px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid #f0f0f0;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-}
-
-.card-icon {
-  font-size: 24px;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f8f9fa;
-  border-radius: 10px;
-}
-
-.card-content h3 {
-  margin: 0 0 4px 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #333;
-}
-
-.card-content p {
-  margin: 0;
-  font-size: 14px;
-  color: #666;
+  margin-bottom: 18px;
 }
 
 .quick-actions h2 {
-  margin: 0 0 16px 0;
-  color: #333;
+  margin: 6px 0 0;
+  color: var(--color-heading);
   font-size: 20px;
+  font-weight: 800;
 }
 
 .action-buttons {
   display: flex;
-  gap: 12px;
   flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
-.btn {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: #007bff;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #0056b3;
-}
-
-.btn-success {
-  background: #28a745;
-  color: white;
-}
-
-.btn-success:hover:not(:disabled) {
-  background: #1e7e34;
-}
-
-.btn-outline {
-  background: transparent;
-  color: #666;
-  border: 1px solid #ddd;
-}
-
-.btn-outline:hover:not(:disabled) {
-  background: #f8f9fa;
-  border-color: #007bff;
-  color: #007bff;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #545b62;
-}
-
-.icon {
-  font-size: 16px;
-}
-
-/* 快速添加模态框 */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  z-index: 1200;
   display: flex;
-  justify-content: center;
   align-items: center;
-  z-index: 1000;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
 }
 
 .modal {
-  background: white;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 500px;
+  width: min(100%, 600px);
   max-height: 90vh;
   overflow: auto;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  background: var(--card-background);
+  box-shadow: var(--shadow-xl);
 }
 
-.quick-add-modal {
-  max-width: 600px;
-}
-
-.modal-header {
+.modal-header,
+.modal-footer {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 24px;
-  border-bottom: 1px solid #e9ecef;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal-footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--color-border);
+  border-bottom: none;
 }
 
 .modal-header h4 {
   margin: 0;
-  color: #333;
+  color: var(--color-heading);
   font-size: 18px;
+  font-weight: 800;
 }
 
 .close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-border);
+  background: var(--button-secondary);
+  color: var(--button-secondary-text);
   cursor: pointer;
-  color: #666;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-}
-
-.close-btn:hover {
-  background: #f8f9fa;
-  color: #333;
+  font-size: 20px;
 }
 
 .modal-body {
-  padding: 24px;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 24px;
-  border-top: 1px solid #e9ecef;
+  padding: 20px;
 }
 
 .preset-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 24px;
+  display: grid;
+  gap: 10px;
 }
 
 .preset-btn {
-  display: flex;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 14px;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: left;
   width: 100%;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--stats-item-bg);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
 }
 
 .preset-btn:hover {
-  border-color: #007bff;
-  background: #f8f9ff;
+  border-color: var(--button-primary);
 }
 
 .preset-icon {
-  font-size: 24px;
-  width: 48px;
-  height: 48px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #f8f9fa;
-  border-radius: 8px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  background: rgba(15, 118, 110, 0.1);
+  color: var(--button-primary);
+  font-size: 12px;
+  font-weight: 850;
 }
 
 .preset-info h5 {
-  margin: 0 0 4px 0;
-  color: #333;
-  font-size: 16px;
+  margin: 0 0 4px;
+  color: var(--color-heading);
+  font-size: 15px;
+  font-weight: 800;
 }
 
 .preset-info p {
   margin: 0;
-  color: #666;
-  font-size: 14px;
+  color: var(--color-text-muted);
+  font-size: 13px;
 }
 
 .divider {
+  margin: 20px 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 700;
   text-align: center;
-  color: #666;
-  font-size: 14px;
-  margin: 24px 0;
-  position: relative;
-}
-
-.divider::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: #e9ecef;
-  z-index: 0;
-}
-
-.divider span {
-  background: white;
-  padding: 0 16px;
-  position: relative;
-  z-index: 1;
-}
-
-.form-group {
-  margin-bottom: 20px;
 }
 
 .form-group label {
   display: block;
   margin-bottom: 8px;
-  font-weight: 500;
-  color: #333;
-  font-size: 14px;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 750;
 }
 
 .form-control {
   width: 100%;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 14px;
-  box-sizing: border-box;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  padding: 11px 13px;
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  color: var(--color-text);
+  outline: none;
 }
 
 .form-control:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+  border-color: var(--button-primary);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
 }
 
-@media (max-width: 768px) {
-  .backend-view {
-    padding: 16px;
-  }
-  
-  .header {
+@media (max-width: 900px) {
+  .backend-hero,
+  .quick-actions {
     flex-direction: column;
-    gap: 16px;
     align-items: stretch;
   }
-  
+
   .overview-cards {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  
-  .card {
-    padding: 16px;
-    gap: 12px;
-  }
-  
-  .card-icon {
-    font-size: 20px;
-    width: 40px;
-    height: 40px;
-  }
-  
-  .card-content h3 {
-    font-size: 20px;
-  }
-  
+
   .action-buttons {
-    flex-direction: column;
+    justify-content: flex-start;
   }
-  
-  .btn {
-    justify-content: center;
+}
+
+@media (max-width: 560px) {
+  .backend-view {
+    padding: 18px 12px 30px;
+  }
+
+  .overview-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .preset-btn {
+    grid-template-columns: 1fr;
   }
 }
 </style>

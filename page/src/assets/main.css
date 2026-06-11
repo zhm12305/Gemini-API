@@ -1,23 +1,129 @@
 @import './base.css';
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 1rem;
+  min-height: 100vh;
   font-weight: normal;
 }
 
-a,
-.green {
+a {
+  color: var(--button-primary);
   text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
 }
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
+a:hover {
+  color: var(--button-primary-hover);
 }
 
+.green {
+  color: var(--color-success);
+}
+
+::selection {
+  color: #ffffff;
+  background: var(--button-primary);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background-soft);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #b7c4d1;
+  border: 2px solid var(--color-background-soft);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8fa3b7;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--button-secondary);
+  color: var(--button-secondary-text);
+  cursor: pointer;
+  font-weight: 650;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--button-primary);
+  color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--button-primary-hover);
+}
+
+.btn-outline {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.btn-outline:hover:not(:disabled) {
+  border-color: var(--button-primary);
+  color: var(--button-primary);
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: #ffffff;
+}
+
+.info-box,
+.panel-card {
+  background: var(--card-background);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.section-title {
+  margin: 0;
+  color: var(--color-heading);
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.section-kicker {
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.config-input,
+.form-control,
+.password-input,
+.api-key-password,
+.api-key-textarea,
+input,
+select,
+textarea {
+  border-radius: var(--radius-md);
+}

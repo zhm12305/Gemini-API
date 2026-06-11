@@ -2,6 +2,23 @@ import json
 import time
 from app.utils.logging import log
 
+def openai_stream_done():
+    return "data: [DONE]\n\n"
+
+def map_openai_finish_reason(reason):
+    if not reason:
+        return None
+    normalized = str(reason).upper()
+    if normalized == "STOP":
+        return "stop"
+    if normalized == "MAX_TOKENS":
+        return "length"
+    if normalized in {"SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII"}:
+        return "content_filter"
+    if normalized == "MALFORMED_FUNCTION_CALL":
+        return "tool_calls"
+    return str(reason).lower()
+
 def openAI_from_text(model="gemini",content=None,finish_reason=None,total_token_count=0,stream=True):
     """
     根据传入参数，创建 OpenAI 标准响应对象块
@@ -69,11 +86,12 @@ def openAI_from_Gemini(response,stream=True):
     now_time = int(time.time())
     chunk_id = f"chatcmpl-{now_time}" # 使用时间戳生成唯一 ID 
     content_chunk = {}
+    finish_reason = "tool_calls" if response.function_call else map_openai_finish_reason(response.finish_reason)
     formatted_chunk = {
         "id": chunk_id,
         "created": now_time,
         "model": response.model,
-        "choices": [{"index": 0 , "finish_reason": response.finish_reason}] 
+        "choices": [{"index": 0 , "finish_reason": finish_reason}] 
     }
 
     # 准备 usage 数据，处理属性缺失或为 None 的情况
