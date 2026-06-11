@@ -150,8 +150,8 @@ def test_api_key_parser_accepts_proxy_tokens():
     manager = APIKeyManager()
     keys = manager._parse_api_keys("AIxxx")
     assert keys == [
-        "AIzaSyC6rlbZRZ9mzF2dlmNr_UcAdzQ-ovqOWEQ",
-        "AQ.Ab8RNabcdefghi0123456789abcdefghijklmnopqrstuvw",
+        "AIza",
+        "AQ.Ab",
     ]
 
 
