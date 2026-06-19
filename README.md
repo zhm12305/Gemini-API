@@ -106,13 +106,6 @@ npm run build:app
 - GitHub 发布清单: [docs/GITHUB_PUBLISH_CHECKLIST.md](docs/GITHUB_PUBLISH_CHECKLIST.md)
 - 安全策略: [SECURITY.md](SECURITY.md)
 
-## 8. 上传 GitHub 前必做
-
-1. 不要提交 `.env`（已在 `.gitignore` 忽略）。  
-2. 轮换所有已暴露 API Key。  
-3. 检查仓库内是否仍有硬编码密钥。  
-4. 仅提交源码与文档，不提交 `page/node_modules` 与运行日志。
-
-## 9. 许可证
+## 8. 许可证
 
 本仓库默认采用 MIT，见 [LICENSE](LICENSE)。
